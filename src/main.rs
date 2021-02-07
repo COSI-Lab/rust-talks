@@ -5,7 +5,6 @@ use tokio::sync::RwLock;
 use warp::{Filter, Rejection, ws::Message};
 
 mod handler;
-mod ws;
 
 // Result type
 type Result<T> = std::result::Result<T, Rejection>;
@@ -22,26 +21,13 @@ async fn main() {
 
     // Indicates whether the service is up
     let health_route = warp::path!("health").and_then(handler::health_handler);
-
     let register = warp::path("register");
+
     // Registers a new client for live updates
     let register_post = register
         .and(warp::post())
         .and(with_clients(clients.clone()))
         .and_then(handler::register_handler);
-
-    // Unregisters a client
-    let register_del = register
-        .and(warp::delete())
-        .and(warp::path::param())
-        .and(with_clients(clients.clone()))
-        .and_then(handler::unregister_handler);
-
-    // Broadcasts events to all clients
-    let publish = warp::path!("publish")
-        .and(warp::body::json())
-        .and(with_clients(clients.clone()))
-        .and_then(handler::publish_handler);
 
     // Websocket endpoint
     let ws_route = warp::path("ws")
@@ -52,8 +38,6 @@ async fn main() {
 
     let routes = health_route
         .or(register_post)
-        .or(register_del)
-        .or(publish)
         .or(ws_route)
         .with(warp::cors().allow_any_origin());
 
