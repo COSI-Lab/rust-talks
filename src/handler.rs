@@ -1,7 +1,7 @@
-use crate::{Client, Clients, Result};
+use crate::{Client, Clients, EventQueue, Result, events::Event};
 use uuid::Uuid;
-use warp::{Reply, reply::json};
-use serde::{Serialize, Deserialize};
+use warp::{Reply, hyper::StatusCode, reply::json};
+use serde::{Serialize};
 use futures::{SinkExt, StreamExt};
 use futures::channel::mpsc;
 use warp::ws::WebSocket;
@@ -11,32 +11,9 @@ pub struct RegisterResponse {
     url: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(tag = "event")]
-pub enum Event {
-    Create { name: String, talk_type: TalkType, desc: String },
-    Hide { id: usize },
-    UnHide { id: usize },
-    Delete { id: usize }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum TalkType {
-    ForumTopic,
-    LightningTalk,
-    ProjectUpdate,
-    Announcement,
-    AfterMeetingSlot,
-}
-
 // Always returns 200
 pub async fn health_handler() -> Result<impl Reply> {
-    let event = Event::Hide{id: 1};
-
-    match serde_json::to_string(&event) {
-        Ok(b) => { Ok(b) }
-        Err(e) => { Ok(e.to_string()) }
-    }
+    Ok(StatusCode::OK)
 }
 
 // Adds a new client to the clients map and returns URL for websocket connection
@@ -59,16 +36,16 @@ pub async fn register_handler(clients: Clients) -> Result<impl Reply> {
 }
 
 // Turns HTTP request into a websocket
-pub async fn ws_handler(ws: warp::ws::Ws, id: String, clients: Clients) -> Result<impl Reply> {
+pub async fn ws_handler(ws: warp::ws::Ws, id: String, clients: Clients, queue: EventQueue) -> Result<impl Reply> {
     let client = clients.read().await.get(&id).cloned();
     match client {
-        Some(c) => Ok(ws.on_upgrade(move |socket| client_connection(socket, id, clients, c))),
+        Some(c) => Ok(ws.on_upgrade(move |socket| client_connection(socket, id, clients, c, queue))),
         None => Err(warp::reject::not_found()),
     }
 }
 
 // Handles the connection to the websocket
-pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client) {
+pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client, queue: EventQueue) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded();
 
@@ -96,18 +73,7 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
         if let Ok(str) = msg.to_str() {
             // Parse message as event
             if let Ok(event) = serde_json::from_str::<Event>(&str) {
-                // Send message to all clients
-                for (cid, client) in clients.write().await.iter_mut() {
-                    // Don't send the event to yourself
-                    if id == *cid {
-                        continue;
-                    }
-
-                    // Acutally send event
-                    if let Some(sender) = &mut client.sender {
-                        let _ = sender.send(Ok(msg.clone())).await;
-                    }
-                }
+                let _ = queue.write().await.queue.send((event, msg)).await;
             }
         }
     }
