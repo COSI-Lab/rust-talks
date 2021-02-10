@@ -1,10 +1,11 @@
-use crate::{Client, Clients, EventQueue, Result, events::Event};
 use uuid::Uuid;
-use warp::{Reply, hyper::StatusCode, reply::json};
+use warp::{Reply, reply::json};
 use serde::{Serialize};
 use futures::{SinkExt, StreamExt};
 use futures::channel::mpsc;
 use warp::ws::WebSocket;
+
+use crate::{Client, Clients, DB, EventQueue, Result, events::EventRequest};
 
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
@@ -13,7 +14,11 @@ pub struct RegisterResponse {
 
 // Always returns 200
 pub async fn health_handler() -> Result<impl Reply> {
-    Ok(StatusCode::OK)
+    let x = EventRequest::Create { name: String::from("name"), talk_type: crate::events::TalkType::ForumTopic, desc: String::from("test") };
+    match serde_json::to_string(&x) {
+        Ok(s) => { Ok(s) }
+        Err(_) => { Ok(String::from("not ok")) }
+    }
 }
 
 // Adds a new client to the clients map and returns URL for websocket connection
@@ -33,6 +38,15 @@ pub async fn register_handler(clients: Clients) -> Result<impl Reply> {
     Ok(json(&RegisterResponse {
         url: format!("ws://127.0.0.1:8000/ws/{}", uuid),
     }))
+}
+
+pub async fn visible_talks(db: DB) -> Result<impl Reply> {
+    let result = db.read().await.iter()
+        .filter(|talk| talk.is_visible)
+        .filter_map(|talk| serde_json::to_string(talk).ok())
+        .fold(String::from("["), |a, b| a + &b + ",");
+
+    Ok(result + "]")
 }
 
 // Turns HTTP request into a websocket
@@ -72,8 +86,8 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
         // If message is string
         if let Ok(str) = msg.to_str() {
             // Parse message as event
-            if let Ok(event) = serde_json::from_str::<Event>(&str) {
-                let _ = queue.write().await.queue.send((event, msg)).await;
+            if let Ok(event) = serde_json::from_str::<EventRequest>(&str) {
+                let _ = queue.write().await.queue.send(event).await;
             }
         }
     }
