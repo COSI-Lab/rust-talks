@@ -15,7 +15,7 @@ type DB = Arc<RwLock<Vec<Talk>>>;
 
 #[derive(Debug, Clone)]
 pub struct Queue {
-    pub queue: UnboundedSender<EventRequest>,
+    pub queue: UnboundedSender<(EventRequest, String)>,
 }
 
 #[derive(Debug, Clone)]
@@ -28,11 +28,11 @@ async fn main() {
     // Current clients
     let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
 
-    // db of talks
-    let db: DB = Arc::new(RwLock::new(Vec::new()));
+    // Create db
+    let db = events::create_db().await;
 
     // Create MPSC event queue channel
-    let (tx, rx) = unbounded::<EventRequest>();
+    let (tx, rx) = unbounded::<(EventRequest, String)>();
     let queue: EventQueue = Arc::new(RwLock::new(Queue { queue: tx }));
 
     // Indicates whether the service is up

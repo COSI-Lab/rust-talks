@@ -87,7 +87,7 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
         if let Ok(str) = msg.to_str() {
             // Parse message as event
             if let Ok(event) = serde_json::from_str::<EventRequest>(&str) {
-                let _ = queue.write().await.queue.send(event).await;
+                let _ = queue.write().await.queue.send((event, str.to_string())).await;
             }
         }
     }

@@ -1,19 +1,20 @@
-use std::{fs::OpenOptions, io::Write};
+use std::{fs::{File, OpenOptions}, io::{BufRead, BufReader, Write}, sync::Arc};
 
 use futures::{SinkExt, StreamExt, channel::mpsc::UnboundedReceiver};
 use serde::{Serialize, Deserialize};
+use tokio::sync::RwLock;
 use warp::ws::Message;
 
 use crate::{Clients, DB};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "event")]
 pub enum EventRequest {
     Create { name: String, talk_type: TalkType, desc: String },
     Hide { id: usize },
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "event")]
 pub enum EventResponse {
     Show { id: usize, name: String, talk_type: TalkType, desc: String },
@@ -38,15 +39,22 @@ pub enum TalkType {
     AfterMeetingSlot,
 }
 
-pub async fn process_events(mut rx: UnboundedReceiver<EventRequest>, clients: Clients, all: DB) {
+pub async fn process_events(mut rx: UnboundedReceiver<(EventRequest, String)>, clients: Clients, all: DB) {
     let mut events = OpenOptions::new().append(true).open("events.txt").expect("cannot open events file for appending");
 
     // Process events forever
-    while let Some(event) = rx.next().await {
-        let response = process_event(event, &all).await;
+    while let Some((event, msg)) = rx.next().await {
+        let response = process_event(event.clone(), &all).await;
 
         // Encode the response as a string
         if let Ok(str) = serde_json::to_string(&response) {
+            // Writes the msg to the events file
+            loop {
+                if let Ok(_) = events.write_all(msg.as_bytes()) {
+                    break;
+                }
+            }
+
             // Wrap the string as a text message
             let msg = Message::text(&str);
 
@@ -54,13 +62,6 @@ pub async fn process_events(mut rx: UnboundedReceiver<EventRequest>, clients: Cl
             for (_, client) in clients.write().await.iter_mut() {
                 if let Some(sender) = &mut client.sender {
                     let _ = sender.send(Ok(msg.clone())).await;
-                }
-            }
-
-            // Writes the msg to the events file
-            loop {
-                if let Ok(_) = events.write_all(str.as_bytes()) {
-                    break;
                 }
             }
         }
@@ -86,4 +87,26 @@ pub async fn process_event(event: EventRequest, all: &DB) -> EventResponse {
             EventResponse::Hide { id: id }
         }
     }
+}
+
+// Creates the DB object by running all events from events.txt
+pub async fn create_db() -> DB {
+    // Create the DB
+    let db: DB = Arc::new(RwLock::new(Vec::new()));
+
+    // Open the file in read-only mode 
+    let file = File::open("events.txt").unwrap();
+    let reader = BufReader::new(file);
+
+    // Read the file line by line using the lines() iterator from std::io::BufRead.
+    for line in reader.lines() {
+        let event = serde_json::from_str::<EventRequest>(&line.unwrap()); // Ignore errors.
+
+        match event {
+            Ok(event) => { process_event(event, &db).await; }
+            Err(err) => { println!("Error could not process event {}", err) }
+        }
+    }
+
+    return db;
 }
