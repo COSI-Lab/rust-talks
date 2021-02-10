@@ -1,10 +1,33 @@
+@import url("https://fonts.googleapis.com/css?family=Open+Sans");
+
+:root {
+	--background-color: rgba(255,255,255,0.2);
+	--text-color: white;
+}
+
 body {
     margin: 0;
     padding: 0;
     background-color: #78909c;
     color: #e4e4e4;
     font-family: 'Open Sans';
-    margin-top: 60px;
+}
+
+h1 {
+    text-align: center;
+    font-size: 48px;
+    margin-bottom: 0;
+}
+  
+h3 {
+    text-align: center;
+    font-size: 24px;
+}
+
+h5 {
+    text-align: center;
+    font-size: 16px;
+    font-weight: bolder;
 }
   
 table {
@@ -17,4 +40,48 @@ table {
     width: 85%;
 }
 
-table 
+table tr th {
+    background-color: #6c828c;
+    color: white;
+    font-size: 20px;
+    padding: 5px 0px;
+}
+
+table tr:last-child th {
+    padding: 10px 0px;
+}
+
+table tbody .event {
+    text-align: center;
+}
+
+table tbody .event td {
+    padding: 5px 0;
+}
+
+table tbody .event .name {
+    padding-left: 10px;
+    width: 25%;
+}
+
+table tbody .event .type {
+    font-style: italic;
+    width: 25%;
+}
+
+table tbody .event .desc {
+    word-break: break-word;
+    width: 45%;
+}
+
+table td button {
+    background-color: #78909c;
+    color: white;
+    display: inline;
+    float: right;
+    margin: 0 2px;
+}
+
+input {
+    width: 75%;
+}

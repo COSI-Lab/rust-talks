@@ -42,11 +42,11 @@ pub enum TalkType {
 impl Display for TalkType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            TalkType::ForumTopic => { f.write_str("Forum Topic") }
-            TalkType::LightningTalk => { f.write_str("Lightning Talk") }
-            TalkType::ProjectUpdate => { f.write_str("Project Update") }
-            TalkType::Announcement => { f.write_str("Announcement") }
-            TalkType::AfterMeetingSlot => { f.write_str("After Meeting Slot") }
+            TalkType::ForumTopic => { f.write_str("forum topic") }
+            TalkType::LightningTalk => { f.write_str("lightning talk") }
+            TalkType::ProjectUpdate => { f.write_str("project update") }
+            TalkType::Announcement => { f.write_str("announcement") }
+            TalkType::AfterMeetingSlot => { f.write_str("after meeting slot") }
         }
     }
 }

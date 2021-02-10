@@ -1,24 +1,58 @@
 <html>
     <head>
         <link rel="stylesheet" type="text/css" href="static/styles.css">
+        <link rel='stylesheet' href='https://dubsdot.cosi.clarkson.edu/cosi-nav.css'>
+        <script type="text/javascript" src="static/site.js"></script>
     </head>
     <body>
+        <cosi-nav></cosi-nav>
+
+        <h1> Talks </h1>
+        <h3> Upcoming Events For The Clarkson Open Source Institute Meetings </h3>
+        <h3> Next Meeting: TBD </h3>
         <table>
             <tr>
                 <th>Talk Presenter</th>
                 <th>Type</th>
                 <th>Description</th>
-                <th></th>
+                <th> </th>
             </tr>
 
             {% for talk in talks %}
-            <tr>
-                <td> {{talk.name}} </td>
-                <td> {{talk.talk_type}} </td>
-                <td> {{talk.desc}} </td>
-                <td> <button> x </button></td>
+            <tr class="event">
+                <td class="name"> {{talk.name}} </td>
+                <td class="type"> {{talk.talk_type}} </td>
+                <td class="desc"> {{talk.desc}} </td>
+                <td class="actions"> <button> x </button></td>
             </tr>
             {% endfor %}
+
+            <!-- The footer of the table -->
+            <tr>
+                <th>
+                    <input id="name" type="text" placeholder="Name">
+                </th>
+                <th>
+                    <select>
+                        <option value="none"></option>
+                        <option value="ForumTopic">Forum Topic</option>
+                        <option value="LightningTalk">Lightning Talk</option>
+                        <option value="ProjectUpdate">Project Update</option>
+                        <option value="Announcement">Announcement</option>
+                        <option value="AfterMeetingSlot">After-Meeting Slot</option>
+                    </select>
+                </th>
+                <th>
+                    <input id="desc" type="text" placeholder="Description">
+                </th>
+                <th>
+                    <button> create </button>
+                </th>
+            </tr>
         </table>
+        <p style="text-align: center;">
+            <button onclick="parseToMM()">Parse to Meeting Minutes</button>
+        </p>
+        <h5> V3.0 </h5>
     </body>
 </html>
