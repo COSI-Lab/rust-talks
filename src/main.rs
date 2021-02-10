@@ -35,6 +35,11 @@ async fn main() {
     let (tx, rx) = unbounded::<(EventRequest, String)>();
     let queue: EventQueue = Arc::new(RwLock::new(Queue { queue: tx }));
 
+    // Index.html welcome route
+    let welcome_route = warp::path::end()
+        .and(with_db(db.clone()))
+        .and_then(handler::welcome_handler);
+
     // Indicates whether the service is up
     let health_route = warp::path("health")
         .and_then(handler::health_handler);
@@ -58,11 +63,17 @@ async fn main() {
         .and(with_events(queue.clone()))
         .and_then(handler::ws_handler);
 
+    // Host static files in ./static
+    let static_files = warp::path("static")
+        .and(warp::fs::dir("static"));
+
     // Combine all routes
-    let routes = health_route
+    let routes = welcome_route
+        .or(health_route)
         .or(register)
         .or(talks)
         .or(ws_route)
+        .or(static_files)
         .with(warp::cors().allow_any_origin());
     
     // Create a new thread dedicated to processing incoming events

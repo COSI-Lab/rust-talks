@@ -1,4 +1,4 @@
-use std::{fs::{File, OpenOptions}, io::{BufRead, BufReader, Write}, sync::Arc};
+use std::{fmt::Display, fs::{File, OpenOptions}, io::{BufRead, BufReader, Write}, sync::Arc};
 
 use futures::{SinkExt, StreamExt, channel::mpsc::UnboundedReceiver};
 use serde::{Serialize, Deserialize};
@@ -30,13 +30,25 @@ pub struct Talk {
     pub is_visible: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TalkType {
     ForumTopic,
     LightningTalk,
     ProjectUpdate,
     Announcement,
     AfterMeetingSlot,
+}
+
+impl Display for TalkType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            TalkType::ForumTopic => { f.write_str("Forum Topic") }
+            TalkType::LightningTalk => { f.write_str("Lightning Talk") }
+            TalkType::ProjectUpdate => { f.write_str("Project Update") }
+            TalkType::Announcement => { f.write_str("Announcement") }
+            TalkType::AfterMeetingSlot => { f.write_str("After Meeting Slot") }
+        }
+    }
 }
 
 pub async fn process_events(mut rx: UnboundedReceiver<(EventRequest, String)>, clients: Clients, all: DB) {
@@ -76,6 +88,7 @@ pub async fn process_event(event: EventRequest, all: &DB) -> EventResponse {
             let id = locked.len();
             let talk = Talk { id, name: name.clone(), talk_type: talk_type.clone(), desc: desc.clone(), is_visible: true };
             locked.push(talk);
+            locked.sort_by_cached_key(|talk| talk.talk_type.clone());
 
             EventResponse::Show { id, name, talk_type, desc }
         }

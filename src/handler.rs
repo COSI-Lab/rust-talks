@@ -1,15 +1,28 @@
+use askama::Template;
 use uuid::Uuid;
-use warp::{Reply, reply::json};
+use warp::{Reply, reply::{html, json}};
 use serde::{Serialize};
 use futures::{SinkExt, StreamExt};
 use futures::channel::mpsc;
 use warp::ws::WebSocket;
 
-use crate::{Client, Clients, DB, EventQueue, Result, events::EventRequest};
+use crate::{Client, Clients, DB, EventQueue, Result, events::{EventRequest, Talk}};
 
-#[derive(Serialize, Debug)]
-pub struct RegisterResponse {
-    url: String,
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate {
+    talks: Vec<Talk>
+}
+
+// Return the talks homepage
+pub async fn welcome_handler(db: DB) -> Result<impl Reply> {
+    let talks = db.read().await.clone();
+
+    let template = IndexTemplate {
+        talks
+    };
+
+    Ok(html(template.render().unwrap()))
 }
 
 // Always returns 200
@@ -19,6 +32,11 @@ pub async fn health_handler() -> Result<impl Reply> {
         Ok(s) => { Ok(s) }
         Err(_) => { Ok(String::from("not ok")) }
     }
+}
+
+#[derive(Serialize, Debug)]
+pub struct RegisterResponse {
+    url: String,
 }
 
 // Adds a new client to the clients map and returns URL for websocket connection

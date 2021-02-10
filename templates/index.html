@@ -1,0 +1,24 @@
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="static/styles.css">
+    </head>
+    <body>
+        <table>
+            <tr>
+                <th>Talk Presenter</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th></th>
+            </tr>
+
+            {% for talk in talks %}
+            <tr>
+                <td> {{talk.name}} </td>
+                <td> {{talk.talk_type}} </td>
+                <td> {{talk.desc}} </td>
+                <td> <button> x </button></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </body>
+</html>
