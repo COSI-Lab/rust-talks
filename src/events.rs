@@ -30,13 +30,26 @@ pub struct Talk {
     pub is_visible: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TalkType {
     ForumTopic,
     LightningTalk,
     ProjectUpdate,
     Announcement,
     AfterMeetingSlot,
+}
+
+impl Serialize for TalkType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: serde::Serializer {
+        serializer.serialize_str(match *self {
+            TalkType::ForumTopic => "forum topic",
+            TalkType::LightningTalk => "lightning talk",
+            TalkType::ProjectUpdate => "project update",
+            TalkType::Announcement => "announcement",
+            TalkType::AfterMeetingSlot => "after meeting slot"
+        })
+    }
 }
 
 impl Display for TalkType {
@@ -58,8 +71,8 @@ pub async fn process_events(mut rx: UnboundedReceiver<(EventRequest, String)>, c
     while let Some((event, msg)) = rx.next().await {
         let response = process_event(event.clone(), &all).await;
 
-        // Encode the response as a string
-        if let Ok(str) = serde_json::to_string(&response) {
+        // Check if the client is asking if it's authed
+        if let Ok(str) = serde_json::to_string(&response) { // Encode the response as a string
             // Writes the msg to the events file
             loop {
                 if let Ok(_) = events.write_all(msg.as_bytes()) {
@@ -80,20 +93,26 @@ pub async fn process_events(mut rx: UnboundedReceiver<(EventRequest, String)>, c
     }
 }
 
-pub async fn process_event(event: EventRequest, all: &DB) -> EventResponse {
+// Process a request and return a response
+pub async fn process_event(event: EventRequest, db: &DB) -> EventResponse {
     match event {
         EventRequest::Create { name, talk_type, desc } => {
             // Get lock            
-            let mut locked = all.write().await;
+            let mut locked = db.write().await;
+            
+            // Add talk to the database
             let id = locked.len();
             let talk = Talk { id, name: name.clone(), talk_type: talk_type.clone(), desc: desc.clone(), is_visible: true };
             locked.push(talk);
+
+            // Sort the database
             locked.sort_by_cached_key(|talk| talk.talk_type.clone());
 
+            // Return data
             EventResponse::Show { id, name, talk_type, desc }
         }
         EventRequest::Hide { id } => {
-            if let Some(mut talk) = all.write().await.get_mut(id) {
+            if let Some(mut talk) = db.write().await.get_mut(id) {
                 talk.is_visible = false;
             }
 

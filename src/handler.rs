@@ -1,3 +1,4 @@
+use std::net::{IpAddr, SocketAddr};
 use askama::Template;
 use uuid::Uuid;
 use warp::{Reply, reply::{html, json}};
@@ -16,7 +17,11 @@ struct IndexTemplate {
 
 // Return the talks homepage
 pub async fn welcome_handler(db: DB) -> Result<impl Reply> {
-    let talks = db.read().await.clone();
+    let mut talks: Vec<Talk> = Vec::new();
+
+    db.read().await.iter()
+        .filter(|talk| talk.is_visible)
+        .for_each(|talk| talks.push(talk.clone()));
 
     let template = IndexTemplate {
         talks
@@ -37,24 +42,42 @@ pub async fn health_handler() -> Result<impl Reply> {
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
     url: String,
+    authenticated: bool,
 }
 
 // Adds a new client to the clients map and returns URL for websocket connection
-pub async fn register_handler(clients: Clients) -> Result<impl Reply> {
+pub async fn register_handler(addr: Option<SocketAddr>, clients: Clients) -> Result<impl Reply> {
     // 128 bit UUID, a colision might as well be impossible
     let uuid = Uuid::new_v4().simple().to_string();
+
+    // Authenticate the user based on their ip address
+    let authenticated: bool = match addr {
+        Some(addr) => { 
+            match addr.ip() {
+                IpAddr::V4(ip) => { 
+                    // check the ip is in '128.153.0.0/16'
+                    let octects = ip.octets();
+                    octects[0] == 128 && octects[1] == 153
+                }
+                IpAddr::V6(_) => { false }
+            }
+        }
+        None => { false }
+    };
 
     // Adds new client to map
     clients.write().await.insert(
         uuid.clone(),
         Client {
             sender: None,
+            authenticated,
         }
     );
 
     // Returns url for websocket connection
     Ok(json(&RegisterResponse {
         url: format!("ws://127.0.0.1:8000/ws/{}", uuid),
+        authenticated,
     }))
 }
 
@@ -101,7 +124,7 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
             }
         };
 
-        // If message is string
+        // If message is a string
         if let Ok(str) = msg.to_str() {
             // Parse message as event
             if let Ok(event) = serde_json::from_str::<EventRequest>(&str) {

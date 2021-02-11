@@ -7,6 +7,9 @@ use warp::{Filter, Rejection, ws::Message};
 mod handler;
 mod events;
 
+// Constants
+const PORT: u16 = 8000;
+
 // Result type
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, Client>>>;
@@ -21,6 +24,7 @@ pub struct Queue {
 #[derive(Debug, Clone)]
 pub struct Client {
     pub sender: Option<UnboundedSender<std::result::Result<Message, warp::Error>>>,
+    pub authenticated: bool
 }
 
 #[tokio::main]
@@ -29,7 +33,9 @@ async fn main() {
     let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
 
     // Create db
+    println!("Generating in memory database...");
     let db = events::create_db().await;
+    println!("Loaded {} talks", db.read().await.len());
 
     // Create MPSC event queue channel
     let (tx, rx) = unbounded::<(EventRequest, String)>();
@@ -46,7 +52,7 @@ async fn main() {
 
     // Registers a new client for live updates
     let register = warp::path("register")
-        .and(warp::post())
+        .and(warp::addr::remote())
         .and(with_clients(clients.clone()))
         .and_then(handler::register_handler);
 
@@ -80,6 +86,7 @@ async fn main() {
     tokio::task::spawn(events::process_events(rx, clients, db.clone()));
 
     // Serve the routes
+    println!("Serving on port {}...", PORT);
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
 }
 

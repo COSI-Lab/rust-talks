@@ -1,5 +1,6 @@
 <html>
     <head>
+        <title>Talks</title>
         <link rel="stylesheet" type="text/css" href="static/styles.css">
         <link rel='stylesheet' href='https://dubsdot.cosi.clarkson.edu/cosi-nav.css'>
         <script type="text/javascript" src="static/site.js"></script>
@@ -10,49 +11,54 @@
         <h1> Talks </h1>
         <h3> Upcoming Events For The Clarkson Open Source Institute Meetings </h3>
         <h3> Next Meeting: TBD </h3>
-        <table>
-            <tr>
-                <th>Talk Presenter</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th> </th>
-            </tr>
+        <table id="table">
+            <thead>
+                <tr>
+                    <th style="display: none;"></th>
+                    <th>Talk Presenter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th></th>
+                </tr>
+            </thead>
 
-            {% for talk in talks %}
-            <tr class="event">
-                <td class="name"> {{talk.name}} </td>
-                <td class="type"> {{talk.talk_type}} </td>
-                <td class="desc"> {{talk.desc}} </td>
-                <td class="actions"> <button> x </button></td>
-            </tr>
-            {% endfor %}
+            <tbody id="tb">
+                {% for talk in talks %}
+                <tr class="event">
+                    <td style="display: none;"> {{talk.id}} </td>
+                    <td class="name"> {{talk.name}} </td>
+                    <td class="type"> {{talk.talk_type}} </td>
+                    <td class="desc"> {{talk.desc}} </td>
+                    <td class="actions"> <button onclick="hide({{talk.id}})" > x </button> </td>
+                </tr>
+                {% endfor %}
+                <tr>
 
-            <!-- The footer of the table -->
-            <tr>
-                <th>
-                    <input id="name" type="text" placeholder="Name">
-                </th>
-                <th>
-                    <select>
-                        <option value="none"></option>
-                        <option value="ForumTopic">Forum Topic</option>
-                        <option value="LightningTalk">Lightning Talk</option>
-                        <option value="ProjectUpdate">Project Update</option>
-                        <option value="Announcement">Announcement</option>
-                        <option value="AfterMeetingSlot">After-Meeting Slot</option>
-                    </select>
-                </th>
-                <th>
-                    <input id="desc" type="text" placeholder="Description">
-                </th>
-                <th>
-                    <button> create </button>
-                </th>
-            </tr>
+                    <th>
+                        <input id="name" type="text" placeholder="Name">
+                    </th>
+                    <th>
+                        <select id="type">
+                            <option value="none"></option>
+                            <option value="ForumTopic">Forum Topic</option>
+                            <option value="LightningTalk">Lightning Talk</option>
+                            <option value="ProjectUpdate">Project Update</option>
+                            <option value="Announcement">Announcement</option>
+                            <option value="AfterMeetingSlot">After-Meeting Slot</option>
+                        </select>
+                    </th>
+                    <th>
+                        <input id="desc" type="text" placeholder="Description">
+                    </th>
+                    <th>
+                        <button onclick="create()"> create </button>
+                    </th>
+                </tr>
+            </tbody>
         </table>
         <p style="text-align: center;">
             <button onclick="parseToMM()">Parse to Meeting Minutes</button>
         </p>
-        <h5> V3.0 </h5>
+        <h5> V1.0 </h5>
     </body>
 </html>
