@@ -28,10 +28,12 @@ cargo build --release
 | POST    | /register          | Registers a new client for live updates |
 | POST    | /authenticate      | authenticates a client                  |
 | GET     | /talks             | Returns the currently visible talks     |
-| GET     | /ws                | Websocket endpoint                      |
+| GET     | /ws/{id}           | Websocket endpoint                      |
 | GET     | /static/*          | Serves static files                     |
 
 ## Todos
 
-* Replace the "Next Meeting TBD" with the next meeting
-* Parse to meeting minutes
+* Replace the "Next Meeting TBD" with the next meeting (js or rust)
+* Parse to meeting minutes (js)
+* /all endpoint (rust and js)
+* turn into a docker container (docker)
