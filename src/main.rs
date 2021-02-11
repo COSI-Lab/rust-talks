@@ -8,7 +8,7 @@ mod handler;
 mod events;
 
 // Constants
-const PORT: u16 = 8000;
+const PORT: u16 = 3001;
 
 // Result type
 type Result<T> = std::result::Result<T, Rejection>;
@@ -93,7 +93,7 @@ async fn main() {
 
     // Serve the routes
     println!("Serving on port {}...", PORT);
-    warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
+    warp::serve(routes).run(([127, 0, 0, 1], PORT)).await;
 }
 
 // This is spooky code that allows handlers to access client object 
