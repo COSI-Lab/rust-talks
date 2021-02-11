@@ -33,5 +33,5 @@ cargo build --release
 
 ## Todos
 
-* Find the "Next Wednesday"
+* Replace the "Next Meeting TBD" with the next meeting
 * Parse to meeting minutes

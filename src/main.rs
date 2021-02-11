@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, convert::Infallible, net::IpAddr, sync::Arc};
 use events::{EventRequest, Talk};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
 use tokio::sync::RwLock;
@@ -53,7 +53,7 @@ async fn main() {
 
     // Registers a new client for live updates
     let register = warp::path("register")
-        .and(warp::header::<SocketAddr>("x-forwarded-for"))
+        .and(warp::header::<IpAddr>("x-forwarded-for"))
         .and(with_clients(clients.clone()))
         .and_then(handler::register_handler);
 

@@ -1,4 +1,4 @@
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 use askama::Template;
 use uuid::Uuid;
 use warp::{Reply, hyper::StatusCode, reply::{html, json}};
@@ -47,12 +47,12 @@ pub struct RegisterResponse {
 }
 
 // Adds a new client to the clients map and returns URL for websocket connection
-pub async fn register_handler(addr: SocketAddr, clients: Clients) -> Result<impl Reply> {
+pub async fn register_handler(addr: IpAddr, clients: Clients) -> Result<impl Reply> {
     // 128 bit UUID, a colision might as well be impossible
     let id = Uuid::new_v4().simple().to_string();
 
     // Authenticate the user based on their ip address
-    let authenticated: bool = match addr.ip() {
+    let authenticated: bool = match addr {
         IpAddr::V4(ip) => { 
             // check the ip is in '128.153.0.0/16'
             let octects = ip.octets();
