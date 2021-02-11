@@ -1,42 +1,13 @@
-// Setup the nav bar
-fetch('https://dubsdot.cslabs.clarkson.edu/cosi-nav.json')
-    .then(res => res.json())
-    .then(json => {
-        let links = json.links;
-        let linkList = document.querySelector('cosi-nav');
-        links.forEach(link => {
-            let newLink = document.createElement('li');
-            newLink.innerHTML = `<a href="${link.url}">${link.name}</a>`;
-            linkList.appendChild(newLink);
-        });
-    });
-
-var websocket;
-var authenticated = false;
-
-var ordering = {}
-ordering["forum topic"] = 1
-ordering["lightning talk"] = 2
-ordering["project update"] = 3
-ordering["announcement"] = 4
-ordering["after meeting slot"] = 5
-
-// Ask to hide an entry
-function hide(id) {
-    let event = {
-        "event": "Hide",
-        "id": id,
-    };
-
-    websocket.send(JSON.stringify(event));
-}
-
 // Ask to create an entry
 function create() {
+    if (!auth()) {
+        return
+    }
+
     // Get values
-    let name = document.getElementById("name").value;
-    let type = document.getElementById("type").value;
-    let desc = document.getElementById("desc").value;
+    let name = document.getElementById("name");
+    let type = document.getElementById("type");
+    let desc = document.getElementById("description");
 
     // Check for errors
     if (!name || !type || !desc) {
@@ -46,23 +17,93 @@ function create() {
     // Create event
     let event = {
         "event": "Create",
-        "name": name,
-        "talk_type": type,
-        "desc": desc,
+        "name": name.value,
+        "talk_type": type.value,
+        "desc": desc.value,
     };
+
+    name.value = ""
+    type.value = ""
+    desc.value = ""
 
     // Send it
     websocket.send(JSON.stringify(event));
 }
 
-// Register a websocket connection
-fetch("/register")
+function promptPassword() {
+    return prompt("Please enter tonight's meeting password.");
+}
+
+// authenticate
+function auth() {
+    if (!authenticated) {
+        let password = promptPassword();
+
+        // synchronous request to /authenticate
+        var xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "/authenticate", false);
+        xhttp.setRequestHeader("Content-Type", "application/json");
+
+        let event = {
+            "id": wsID,
+            "password": password
+        };
+
+        xhttp.send(JSON.stringify(event));
+
+        authenticated = xhttp.status == 200;
+    }
+
+    return authenticated;
+}
+
+// Ask to hide an entry
+function hide(id) {
+    if (!auth()) {
+        return
+    }
+
+    let event = {
+        "event": "Hide",
+        "id": id,
+    };
+
+    websocket.send(JSON.stringify(event));
+}
+
+var websocket;
+var wsID;
+var authenticated = false;
+
+window.onload = function() {
+    // Tie pressing enter on the description field to the create button
+    let button = document.getElementById("create");
+    document.getElementById("description").addEventListener("keydown",
+        function(event) {
+            if (!event) {
+                var event = window.event;
+            }
+            if (event.keyCode == 13){
+                button.click();
+            }
+        }, false);
+
+    // Register a websocket connection
+    fetch("/register")
     .then(function (response) {
         return response.json();
     })
     .then(function (result) {
+        var ordering = {}
+        ordering["forum topic"] = 1
+        ordering["lightning talk"] = 2
+        ordering["project update"] = 3
+        ordering["announcement"] = 4
+        ordering["after meeting slot"] = 5
+
         authenticated = result.authenticated;
         websocket = new WebSocket(result.url);
+        wsID = result.id;
 
         websocket.onmessage = function (event) {
             let json = JSON.parse(event.data);
@@ -79,7 +120,6 @@ fetch("/register")
                     let order = ordering[rows[i].children[2].innerText];
                     let id = rows[i].children[0].innerText;
 
-                    console.log(ordering[json.talk_type], order);
                     if (ordering[json.talk_type] < order) {
                         break;
                     }
@@ -130,4 +170,17 @@ fetch("/register")
     .catch(function (error) {
         console.log("Error: " + error);
     });
+};
 
+// Setup the nav bar
+fetch('https://dubsdot.cslabs.clarkson.edu/cosi-nav.json')
+.then(res => res.json())
+    .then(json => {
+        let links = json.links;
+        let linkList = document.querySelector('cosi-nav');
+        links.forEach(link => {
+            let newLink = document.createElement('li');
+            newLink.innerHTML = `<a href="${link.url}">${link.name}</a>`;
+            linkList.appendChild(newLink);
+        });
+    });

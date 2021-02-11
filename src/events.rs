@@ -19,6 +19,7 @@ pub enum EventRequest {
 pub enum EventResponse {
     Show { id: usize, name: String, talk_type: TalkType, desc: String },
     Hide { id: usize },
+    Authenticate { authenticated: bool }
 }
 
 #[derive(Serialize, Clone, Debug)]

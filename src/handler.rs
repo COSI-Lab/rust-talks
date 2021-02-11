@@ -1,8 +1,8 @@
 use std::net::{IpAddr, SocketAddr};
 use askama::Template;
 use uuid::Uuid;
-use warp::{Reply, reply::{html, json}};
-use serde::{Serialize};
+use warp::{Reply, hyper::StatusCode, reply::{html, json}};
+use serde::{Serialize, Deserialize};
 use futures::{SinkExt, StreamExt};
 use futures::channel::mpsc;
 use warp::ws::WebSocket;
@@ -10,7 +10,7 @@ use warp::ws::WebSocket;
 use crate::{Client, Clients, DB, EventQueue, Result, events::{EventRequest, Talk}};
 
 #[derive(Template)]
-#[template(path = "index.html")]
+#[template(path = "index.j2")]
 struct IndexTemplate {
     talks: Vec<Talk>
 }
@@ -32,7 +32,7 @@ pub async fn welcome_handler(db: DB) -> Result<impl Reply> {
 
 // Always returns 200
 pub async fn health_handler() -> Result<impl Reply> {
-    let x = EventRequest::Create { name: String::from("name"), talk_type: crate::events::TalkType::ForumTopic, desc: String::from("test") };
+    let x = Password { password: String::from("password") };
     match serde_json::to_string(&x) {
         Ok(s) => { Ok(s) }
         Err(_) => { Ok(String::from("not ok")) }
@@ -42,13 +42,14 @@ pub async fn health_handler() -> Result<impl Reply> {
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
     url: String,
+    id: String,
     authenticated: bool,
 }
 
 // Adds a new client to the clients map and returns URL for websocket connection
 pub async fn register_handler(addr: Option<SocketAddr>, clients: Clients) -> Result<impl Reply> {
     // 128 bit UUID, a colision might as well be impossible
-    let uuid = Uuid::new_v4().simple().to_string();
+    let id = Uuid::new_v4().simple().to_string();
 
     // Authenticate the user based on their ip address
     let authenticated: bool = match addr {
@@ -67,7 +68,7 @@ pub async fn register_handler(addr: Option<SocketAddr>, clients: Clients) -> Res
 
     // Adds new client to map
     clients.write().await.insert(
-        uuid.clone(),
+        id.clone(),
         Client {
             sender: None,
             authenticated,
@@ -75,10 +76,36 @@ pub async fn register_handler(addr: Option<SocketAddr>, clients: Clients) -> Res
     );
 
     // Returns url for websocket connection
-    Ok(json(&RegisterResponse {
-        url: format!("ws://127.0.0.1:8000/ws/{}", uuid),
-        authenticated,
+    Ok(json(&RegisterResponse { 
+        url: format!("ws://127.0.0.1:8000/ws/{}", id),
+        id,
+        authenticated 
     }))
+}
+
+#[derive(Deserialize, Debug)]
+pub struct AuthenticateRequest {
+    id: String,
+    password: String,
+}
+
+pub async fn authenticate(request: AuthenticateRequest, clients: Clients) -> Result<impl Reply> {
+    // Check if the client is already authenticated
+    if request.password == "conway" {
+        let mut writer = clients.write().await;
+        match writer.get_mut(&request.id) {
+            Some(client) => {
+                // set authenticated flag
+                client.authenticated = true;
+                return Ok(StatusCode::OK);
+            }
+            None => {
+                return Ok(StatusCode::BAD_REQUEST);
+            }
+        }
+    }
+
+    return Ok(StatusCode::FORBIDDEN);
 }
 
 pub async fn visible_talks(db: DB) -> Result<impl Reply> {
@@ -99,6 +126,11 @@ pub async fn ws_handler(ws: warp::ws::Ws, id: String, clients: Clients, queue: E
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Password {
+    password: String
+}
+
 // Handles the connection to the websocket
 pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client, queue: EventQueue) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
@@ -115,20 +147,26 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
 
     // Red messages forever
     while let Some(result) = client_ws_rcv.next().await {
-        // Read message
-        let msg = match result {
-            Ok(msg) => msg,
-            Err(e) => {
-                eprintln!("error receiving ws message for id: {}): {}", id.clone(), e);
-                break;
-            }
-        };
+        // Checks if the client is authenticated
+        if clients.read().await.get(&id).map_or(false, |client| client.authenticated) {
+            // Read message
+            let msg = match result {
+                Ok(msg) => msg,
+                Err(e) => {
+                    eprintln!("error receiving ws message for id: {}): {}", id.clone(), e);
+                    break;
+                }
+            };
 
-        // If message is a string
-        if let Ok(str) = msg.to_str() {
-            // Parse message as event
-            if let Ok(event) = serde_json::from_str::<EventRequest>(&str) {
-                let _ = queue.write().await.queue.send((event, str.to_string())).await;
+            // If message is a string
+            if let Ok(str) = msg.to_str() {
+                // Parse message as event
+                if let Ok(event) = serde_json::from_str::<EventRequest>(&str) {
+                    let mut text = str.to_string();
+                    text.push('\n');
+
+                    let _ = queue.write().await.queue.send((event, text)).await;
+                }
             }
         }
     }

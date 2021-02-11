@@ -33,13 +33,11 @@
                 </tr>
                 {% endfor %}
                 <tr>
-
                     <th>
-                        <input id="name" type="text" placeholder="Name">
+                        <input id="name" type="text" placeholder="Name" value="" autocomplete="off">
                     </th>
                     <th>
                         <select id="type">
-                            <option value="none"></option>
                             <option value="ForumTopic">Forum Topic</option>
                             <option value="LightningTalk">Lightning Talk</option>
                             <option value="ProjectUpdate">Project Update</option>
@@ -48,10 +46,10 @@
                         </select>
                     </th>
                     <th>
-                        <input id="desc" type="text" placeholder="Description">
+                        <input id="description" type="text" placeholder="Description" value="" autocomplete="off">
                     </th>
                     <th>
-                        <button onclick="create()"> create </button>
+                        <button id="create" onclick="create()"> create </button>
                     </th>
                 </tr>
             </tbody>

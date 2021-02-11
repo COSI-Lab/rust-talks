@@ -56,6 +56,11 @@ async fn main() {
         .and(with_clients(clients.clone()))
         .and_then(handler::register_handler);
 
+    let authenticate = warp::path("authenticate")
+        .and(warp::body::json())
+        .and(with_clients(clients.clone()))
+        .and_then(handler::authenticate);
+
     // Gets talks route
     let talks = warp::path("talks")
         .and(with_db(db.clone()))
@@ -77,6 +82,7 @@ async fn main() {
     let routes = welcome_route
         .or(health_route)
         .or(register)
+        .or(authenticate)
         .or(talks)
         .or(ws_route)
         .or(static_files)
