@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::Infallible, sync::Arc};
+use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc};
 use events::{EventRequest, Talk};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
 use tokio::sync::RwLock;
@@ -9,7 +9,7 @@ mod events;
 
 // Constants
 const PORT: u16 = 3001;
-const HOST: &str = "talks.cosi.clarkson.edu/";
+const HOST: &str = "talks.cosi.clarkson.edu";
 
 // Result type
 type Result<T> = std::result::Result<T, Rejection>;
@@ -53,7 +53,7 @@ async fn main() {
 
     // Registers a new client for live updates
     let register = warp::path("register")
-        .and(warp::addr::remote())
+        .and(warp::header::<SocketAddr>("x-forwarded-for"))
         .and(with_clients(clients.clone()))
         .and_then(handler::register_handler);
 
