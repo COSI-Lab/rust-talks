@@ -9,7 +9,7 @@ mod events;
 
 // Constants
 const PORT: u16 = 3001;
-const HOST: &str = "talks.cosi.clarkson.edu";
+const HOST: &str = "localhost:3001";
 
 // Result type
 type Result<T> = std::result::Result<T, Rejection>;

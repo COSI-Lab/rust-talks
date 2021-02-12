@@ -37,3 +37,6 @@ cargo build --release
 * Parse to meeting minutes (js)
 * /all endpoint (rust and js)
 * turn into a docker container (docker)
+* set params with `.env` file (rust) 
+* Frontend error handling (js)
+* Add debugging support

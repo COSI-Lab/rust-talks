@@ -30,6 +30,11 @@ h5 {
     font-weight: bolder;
 }
   
+a {
+    text-decoration: none;
+    color: #e4e4e4;
+}
+
 table {
     background-color: white;
     border-collapse: collapse;
