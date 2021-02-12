@@ -118,6 +118,7 @@ pub async fn process_event(event: EventRequest, db: &DB) -> EventResponse {
             for mut talk in db.write().await.iter_mut().rev() {
                 if talk.id == id {
                     talk.is_visible = false;
+                    break;
                 }
             };
 
