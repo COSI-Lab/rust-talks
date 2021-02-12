@@ -33,10 +33,11 @@ cargo build --release
 
 ## Todos
 
+* Split the talks database in 2 where 1 holds all talks and the other holds the currently visible talks in presention order, for super speed (rust)
 * Replace the "Next Meeting TBD" with the next meeting (js or rust)
 * Parse to meeting minutes (js)
 * /all endpoint (rust and js)
 * turn into a docker container (docker)
 * set params with `.env` file (rust) 
 * Frontend error handling (js)
-* Add debugging support
+* Add debugging support (rust)

@@ -113,9 +113,13 @@ pub async fn process_event(event: EventRequest, db: &DB) -> EventResponse {
             EventResponse::Show { id, name, talk_type, desc }
         }
         EventRequest::Hide { id } => {
-            if let Some(mut talk) = db.write().await.get_mut(id) {
-                talk.is_visible = false;
-            }
+            // This is technically O(n) but since we can assume any talk being hiden is relatively
+            // "new" iterating in reverse can save a lot of clock cycles
+            for mut talk in db.write().await.iter_mut().rev() {
+                if talk.id == id {
+                    talk.is_visible = false;
+                }
+            };
 
             EventResponse::Hide { id: id }
         }

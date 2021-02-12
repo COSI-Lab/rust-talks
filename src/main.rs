@@ -90,7 +90,7 @@ async fn main() {
         .with(warp::cors().allow_any_origin());
     
     // Create a new thread dedicated to processing incoming events
-    tokio::task::spawn(events::process_events(rx, clients, db.clone()));
+    tokio::task::spawn(events::process_events(rx, clients, db));
 
     // Serve the routes
     println!("Serving on port {}...", PORT);
