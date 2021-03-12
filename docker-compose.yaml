@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    volumes:
+      - ${PWD}/events.txt:/rust/talks/events.txt
+    ports:
+      - 8001:8001
+    environment:
+      VIRTUAL_PORT: 8001
+      VIRTUAL_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
+      LETSENCRYPT_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
+
+networks:
+  default:
+    external:
+      name: nginx-proxy
