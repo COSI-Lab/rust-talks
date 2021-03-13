@@ -134,6 +134,7 @@ pub async fn create_db() -> DB {
 
     // Open the file in read-only mode 
     let file = File::open("events.txt").unwrap();
+
     let reader = BufReader::new(file);
 
     // Read the file line by line using the lines() iterator from std::io::BufRead.

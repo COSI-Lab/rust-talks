@@ -7,10 +7,6 @@ use warp::{Filter, Rejection, ws::Message};
 mod handler;
 mod events;
 
-// Constants
-const PORT: u16 = 3001;
-const HOST: &str = "localhost:3001";
-
 // Result type
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, Client>>>;
@@ -93,8 +89,10 @@ async fn main() {
     tokio::task::spawn(events::process_events(rx, clients, db));
 
     // Serve the routes
-    println!("Serving on port {}...", PORT);
-    warp::serve(routes).run(([127, 0, 0, 1], PORT)).await;
+    let port = std::env!("VIRTUAL_PORT").parse::<u16>().unwrap();
+
+    println!("Serving on port {}...", port);
+    warp::serve(routes).run(([127, 0, 0, 1], port)).await;
 }
 
 // This is spooky code that allows handlers to access client object 

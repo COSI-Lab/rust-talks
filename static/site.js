@@ -1,3 +1,30 @@
+function promptPassword() {
+    return prompt("Please enter tonight's meeting password.");
+}
+
+// authenticate
+function auth() {
+    if (!authenticated) {
+        let password = promptPassword();
+
+        // synchronous request to /authenticate
+        var xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "/authenticate", false);
+        xhttp.setRequestHeader("Content-Type", "application/json");
+
+        let event = {
+            "id": wsID,
+            "password": password
+        };
+
+        xhttp.send(JSON.stringify(event));
+
+        authenticated = xhttp.status == 200;
+    }
+
+    return authenticated;
+}
+
 // Ask to create an entry
 function create() {
     if (!auth()) {
@@ -28,33 +55,6 @@ function create() {
 
     // Send it
     websocket.send(JSON.stringify(event));
-}
-
-function promptPassword() {
-    return prompt("Please enter tonight's meeting password.");
-}
-
-// authenticate
-function auth() {
-    if (!authenticated) {
-        let password = promptPassword();
-
-        // synchronous request to /authenticate
-        var xhttp = new XMLHttpRequest();
-        xhttp.open("POST", "/authenticate", false);
-        xhttp.setRequestHeader("Content-Type", "application/json");
-
-        let event = {
-            "id": wsID,
-            "password": password
-        };
-
-        xhttp.send(JSON.stringify(event));
-
-        authenticated = xhttp.status == 200;
-    }
-
-    return authenticated;
 }
 
 // Ask to hide an entry
@@ -88,6 +88,15 @@ window.onload = function() {
             }
         }, false);
 
+    window.onbeforeunload = function() {
+        websocket.onclose = function () {}; // disable onclose handler first
+        websocket.close();
+    };
+
+    register();
+};
+
+function register() {
     // Register a websocket connection
     fetch("/register")
     .then(function (response) {
@@ -102,75 +111,89 @@ window.onload = function() {
         ordering["after meeting slot"] = 5
 
         authenticated = result.authenticated;
-        websocket = new WebSocket(result.url);
+        websocket = new WebSocket("ws://" + window.location.host + "/ws/" + result.id);
         wsID = result.id;
-
-        websocket.onmessage = function (event) {
-            let json = JSON.parse(event.data);
-
-            if (json.event == "Show") {
-                var table = document.getElementById('table');
-                var rows = document.getElementById('tb').children;
-
-                // Insert the new data into the correct location in the table
-                let i = 0
-                for (i = 0; i < rows.length-1; i++) {
-                    // Order by talk type then by id
-
-                    let order = ordering[rows[i].children[2].innerText];
-                    let id = rows[i].children[0].innerText;
-
-                    if (ordering[json.talk_type] < order) {
-                        break;
-                    }
-                }
-
-                // Building a new event object using _javascript_
-                var row = table.insertRow(i+1);
-                row.setAttribute("class", "event");
-
-                var c0 = row.insertCell(0);
-                c0.setAttribute("style", "display: none;");
-                c0.innerHTML = json.id;
-
-                var c1 = row.insertCell(1);
-                c1.setAttribute("class", "name");
-                c1.innerHTML = json.name;
-
-                var c2 = row.insertCell(2);
-                c2.setAttribute("class", "type");
-                c2.innerHTML = json.talk_type;
-
-                var c3 = row.insertCell(3);
-                c3.setAttribute("class", "desc");
-                c3.innerHTML = json.desc;
-
-                var c4 = row.insertCell(4);
-                c4.setAttribute("class", "actions");
-                c4.innerHTML = '<button onclick="hide(' + json.id + ')"> x </button>';
-
-            } else if (json.event == "Hide") {
-                // Remove the row with matching id
-                var rows = document.getElementById('tb').children;
-
-                for (i = 0; i < rows.length-1; i++) {
-                    if (json.id == rows[i].children[0].innerHTML) {
-                        rows[i].remove();
-                        break;
-                    }
-                }
-            }
-        }
-
-        window.onbeforeunload = function() {
-            websocket.onclose = function () {}; // disable onclose handler first
-            websocket.close();
-        };
     })
     .catch(function (error) {
         console.log("Error: " + error);
     });
-};
+}
+
+function addTalk(json) {
+    var table = document.getElementById('table');
+    var rows = document.getElementById('tb').children;
+
+    // Insert the new data into the correct location in the table
+    let i = 0
+    for (i = 0; i < rows.length-1; i++) {
+        // Order by talk type then by id
+
+        let order = ordering[rows[i].children[2].innerText];
+        let id = rows[i].children[0].innerText;
+
+        if (ordering[json.talk_type] < order) {
+            break;
+        }
+    }
+
+    // Building a new event object using _javascript_
+    var row = table.insertRow(i+1);
+    row.setAttribute("class", "event");
+
+    var c0 = row.insertCell(0);
+    c0.setAttribute("style", "display: none;");
+    c0.innerHTML = json.id;
+
+    var c1 = row.insertCell(1);
+    c1.setAttribute("class", "name");
+    c1.innerHTML = json.name;
+
+    var c2 = row.insertCell(2);
+    c2.setAttribute("class", "type");
+    c2.innerHTML = json.talk_type;
+
+    var c3 = row.insertCell(3);
+    c3.setAttribute("class", "desc");
+    c3.innerHTML = json.desc;
+
+    var c4 = row.insertCell(4);
+    c4.setAttribute("class", "actions");
+    c4.innerHTML = '<button onclick="hide(' + json.id + ')"> x </button>';
+
+}
+
+websocket.onmessage = function (event) {
+    let json = JSON.parse(event.data);
+
+    if (json.event == "Show") {
+        addTalk(json);
+    } else if (json.event == "Hide") {
+        // Remove the row with matching id
+        var rows = document.getElementById('tb').children;
+
+        for (i = 0; i < rows.length-1; i++) {
+            if (json.id == rows[i].children[0].innerHTML) {
+                rows[i].remove();
+                break;
+            }
+        }
+    }
+}
+
+websocket.onclose = function() {
+    // Make sure the current talks are up to date
+    fetch("/talks")
+    .then(function (response) {
+        return response.json();
+    })
+    .then(function (result) {
+        var table = document.getElementById('table');
+
+    });
+
+    console.log("Connection closed getting new connection");
+    register();
+}
 
 // Setup the nav bar
 fetch('https://dubsdot.cslabs.clarkson.edu/cosi-nav.json')

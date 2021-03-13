@@ -7,7 +7,7 @@ use futures::{SinkExt, StreamExt};
 use futures::channel::mpsc;
 use warp::ws::WebSocket;
 
-use crate::{Client, Clients, DB, EventQueue, HOST, Result, events::{EventRequest, Talk}};
+use crate::{Client, Clients, DB, EventQueue, Result, events::{EventRequest, Talk}};
 
 #[derive(Template)]
 #[template(path = "index.j2")]
@@ -39,9 +39,9 @@ pub async fn health_handler() -> Result<impl Reply> {
     }
 }
 
+
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
-    url: String,
     id: String,
     authenticated: bool,
 }
@@ -72,7 +72,6 @@ pub async fn register_handler(addr: IpAddr, clients: Clients) -> Result<impl Rep
 
     // Returns url for websocket connection
     Ok(json(&RegisterResponse { 
-        url: format!("ws://{}/ws/{}", HOST, id),
         id,
         authenticated 
     }))
