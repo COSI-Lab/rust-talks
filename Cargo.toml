@@ -3,6 +3,7 @@ name = "rust_talks"
 version = "0.1.0"
 authors = ["mahonec <mahonec@clarkson.edu>"]
 edition = "2018"
+
 [[bin]]
 name = "rust_talks"
 path = "src/main.rs"
@@ -10,6 +11,7 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+diesel = { version = "^1.4.4", features = ["sqlite", "r2d2"] }
 tokio = { version = "^1", features = ["macros", "sync", "rt-multi-thread"] }
 askama = "0.8"
 warp = "0.3"
@@ -17,3 +19,5 @@ serde = {version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "0.4", features = ["serde", "v4"] }
 futures = { version = "0.3.10", default-features = false }
+log = "^0.4"
+pretty_env_logger = "^0.3"
