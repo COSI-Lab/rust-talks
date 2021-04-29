@@ -112,6 +112,38 @@ function register() {
 
         authenticated = result.authenticated;
         websocket = new WebSocket("ws://" + window.location.host + "/ws/" + result.id);
+	websocket.onmessage = function (event) {
+	    let json = JSON.parse(event.data);
+
+	    if (json.event == "Show") {
+		addTalk(json);
+	    } else if (json.event == "Hide") {
+		// Remove the row with matching id
+		var rows = document.getElementById('tb').children;
+
+		for (i = 0; i < rows.length-1; i++) {
+		    if (json.id == rows[i].children[0].innerHTML) {
+			rows[i].remove();
+			break;
+		    }
+		}
+	    }
+	}
+
+	websocket.onclose = function() {
+	    // Make sure the current talks are up to date
+	    fetch("/talks")
+	    .then(function (response) {
+		return response.json();
+	    })
+	    .then(function (result) {
+		var table = document.getElementById('table');
+
+	    });
+
+	    console.log("Connection closed getting new connection");
+	    register();
+	}
         wsID = result.id;
     })
     .catch(function (error) {
@@ -160,39 +192,6 @@ function addTalk(json) {
     c4.setAttribute("class", "actions");
     c4.innerHTML = '<button onclick="hide(' + json.id + ')"> x </button>';
 
-}
-
-websocket.onmessage = function (event) {
-    let json = JSON.parse(event.data);
-
-    if (json.event == "Show") {
-        addTalk(json);
-    } else if (json.event == "Hide") {
-        // Remove the row with matching id
-        var rows = document.getElementById('tb').children;
-
-        for (i = 0; i < rows.length-1; i++) {
-            if (json.id == rows[i].children[0].innerHTML) {
-                rows[i].remove();
-                break;
-            }
-        }
-    }
-}
-
-websocket.onclose = function() {
-    // Make sure the current talks are up to date
-    fetch("/talks")
-    .then(function (response) {
-        return response.json();
-    })
-    .then(function (result) {
-        var table = document.getElementById('table');
-
-    });
-
-    console.log("Connection closed getting new connection");
-    register();
 }
 
 // Setup the nav bar

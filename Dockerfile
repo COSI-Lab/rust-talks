@@ -10,7 +10,6 @@ RUN sed -i 's#dummy.rs#src/main.rs#' Cargo.toml
 
 # Prepare build
 COPY src src
-COPY static static
 COPY templates templates
 ARG VIRTUAL_PORT
 
@@ -20,7 +19,7 @@ RUN cargo build --release
 
 # Run binary
 FROM rust:slim
-WORKDIR /rust_talks
-COPY --from=builder /rust_talks/events.txt events.txt
-COPY --from=builder /rust_talks/target/release/rust_talks rust_talks
+WORKDIR /app
+COPY --from=builder /rust-talks/target/release/rust_talks rust_talks
+COPY static static
 CMD ["./rust_talks"]

@@ -92,7 +92,7 @@ async fn main() {
     let port = std::env!("VIRTUAL_PORT").parse::<u16>().unwrap();
 
     println!("Serving on port {}...", port);
-    warp::serve(routes).run(([127, 0, 0, 1], port)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], port)).await;
 }
 
 // This is spooky code that allows handlers to access client object 

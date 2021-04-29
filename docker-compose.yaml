@@ -3,13 +3,13 @@ version: "3.9"
 services:
   web:
     volumes:
-      - ${PWD}/events.txt:/rust/talks/events.txt
+      - ${PWD}/events.txt:/app/events.txt
     ports:
       - 8001:8001
     environment:
       VIRTUAL_PORT: 8001
       VIRTUAL_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
-      LETSENCRYPT_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
+      #LETSENCRYPT_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
     build:
       context: .
       args: 
