@@ -34,10 +34,10 @@ function create() {
     // Get values
     let name = document.getElementById("name");
     let type = document.getElementById("type");
-    let description = document.getElementById("description");
+    let desc = document.getElementById("description");
 
     // Check for errors
-    if (!name || !type || !description) {
+    if (!name || !type || !desc) {
         return;
     }
 
@@ -46,12 +46,12 @@ function create() {
         "event": "Create",
         "name": name.value,
         "talk_type": type.value,
-        "description": description.value,
+        "desc": desc.value,
     };
 
     name.value = ""
     type.value = ""
-    description.value = ""
+    desc.value = ""
 
     // Send it
     websocket.send(JSON.stringify(event));
@@ -75,21 +75,21 @@ var websocket;
 var wsID;
 var authenticated = false;
 
-window.onload = function() {
+window.onload = function () {
     // Tie pressing enter on the description field to the create button
     let button = document.getElementById("create");
     document.getElementById("description").addEventListener("keydown",
-        function(event) {
+        function (event) {
             if (!event) {
                 var event = window.event;
             }
-            if (event.keyCode == 13){
+            if (event.keyCode == 13) {
                 button.click();
             }
         }, false);
 
-    window.onbeforeunload = function() {
-        websocket.onclose = function () {}; // disable onclose handler first
+    window.onbeforeunload = function () {
+        websocket.onclose = function () { }; // disable onclose handler first
         websocket.close();
     };
 
@@ -99,24 +99,56 @@ window.onload = function() {
 function register() {
     // Register a websocket connection
     fetch("/register")
-    .then(function (response) {
-        return response.json();
-    })
-    .then(function (result) {
-        var ordering = {}
-        ordering["forum topic"] = 1
-        ordering["lightning talk"] = 2
-        ordering["project update"] = 3
-        ordering["announcement"] = 4
-        ordering["after meeting slot"] = 5
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (result) {
+            var ordering = {}
+            ordering["forum topic"] = 1
+            ordering["lightning talk"] = 2
+            ordering["project update"] = 3
+            ordering["announcement"] = 4
+            ordering["after meeting slot"] = 5
 
-        authenticated = result.authenticated;
-        websocket = new WebSocket("ws://" + window.location.host + "/ws/" + result.id);
-        wsID = result.id;
-    })
-    .catch(function (error) {
-        console.log("Error: " + error);
-    });
+            authenticated = result.authenticated;
+            websocket = new WebSocket("ws://" + window.location.host + "/ws/" + result.id);
+            websocket.onmessage = function (event) {
+                let json = JSON.parse(event.data);
+
+                if (json.event == "Show") {
+                    addTalk(json);
+                } else if (json.event == "Hide") {
+                    // Remove the row with matching id
+                    var rows = document.getElementById('tb').children;
+
+                    for (i = 0; i < rows.length - 1; i++) {
+                        if (json.id == rows[i].children[0].innerHTML) {
+                            rows[i].remove();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            websocket.onclose = function () {
+                // Make sure the current talks are up to date
+                fetch("/talks")
+                    .then(function (response) {
+                        return response.json();
+                    })
+                    .then(function (result) {
+                        var table = document.getElementById('table');
+
+                    });
+
+                console.log("Connection closed getting new connection");
+                register();
+            }
+            wsID = result.id;
+        })
+        .catch(function (error) {
+            console.log("Error: " + error);
+        });
 }
 
 function addTalk(json) {
@@ -125,7 +157,7 @@ function addTalk(json) {
 
     // Insert the new data into the correct location in the table
     let i = 0
-    for (i = 0; i < rows.length-1; i++) {
+    for (i = 0; i < rows.length - 1; i++) {
         // Order by talk type then by id
 
         let order = ordering[rows[i].children[2].innerText];
@@ -137,7 +169,7 @@ function addTalk(json) {
     }
 
     // Building a new event object using _javascript_
-    var row = table.insertRow(i+1);
+    var row = table.insertRow(i + 1);
     row.setAttribute("class", "event");
 
     var c0 = row.insertCell(0);
@@ -153,8 +185,8 @@ function addTalk(json) {
     c2.innerHTML = json.talk_type;
 
     var c3 = row.insertCell(3);
-    c3.setAttribute("class", "description");
-    c3.innerHTML = json.description;
+    c3.setAttribute("class", "desc");
+    c3.innerHTML = json.desc;
 
     var c4 = row.insertCell(4);
     c4.setAttribute("class", "actions");
@@ -162,42 +194,9 @@ function addTalk(json) {
 
 }
 
-websocket.onmessage = function (event) {
-    let json = JSON.parse(event.data);
-
-    if (json.event == "Show") {
-        addTalk(json);
-    } else if (json.event == "Hide") {
-        // Remove the row with matching id
-        var rows = document.getElementById('tb').children;
-
-        for (i = 0; i < rows.length-1; i++) {
-            if (json.id == rows[i].children[0].innerHTML) {
-                rows[i].remove();
-                break;
-            }
-        }
-    }
-}
-
-websocket.onclose = function() {
-    // Make sure the current talks are up to date
-    fetch("/talks")
-    .then(function (response) {
-        return response.json();
-    })
-    .then(function (result) {
-        var table = document.getElementById('table');
-
-    });
-
-    console.log("Connection closed getting new connection");
-    register();
-}
-
 // Setup the nav bar
 fetch('https://dubsdot.cslabs.clarkson.edu/cosi-nav.json')
-.then(res => res.json())
+    .then(res => res.json())
     .then(json => {
         let links = json.links;
         let linkList = document.querySelector('cosi-nav');

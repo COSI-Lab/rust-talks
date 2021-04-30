@@ -58,7 +58,7 @@ async fn main() {
 
     // Registers a new client for live updates
     let register = warp::path("register")
-        .and(warp::header::<IpAddr>("x-forwarded-for"))
+        .and(warp::header::optional("x-forwarded-for"))
         .and(with_clients(clients.clone()))
         .and_then(api::register_handler);
 

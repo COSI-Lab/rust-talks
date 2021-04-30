@@ -1,6 +1,6 @@
 -- Your SQL goes here
 CREATE TABLE talks (
-    id INTEGER PRIMARY KEY NOT NULL,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     talk_type TINYINT NOT NULL,
     description TEXT NOT NULL,

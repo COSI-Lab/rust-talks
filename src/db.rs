@@ -29,13 +29,19 @@ impl DBManager {
             let id = diesel::insert_into(talks::table) 
                 .values(&talk)
                 .execute(&self.connection)
-                .map(|_| last_insert_rowid(&self.connection));
+                .map(|changes| {println!("{}", changes); last_insert_rowid(&self.connection)});
 
             match id {
                 Ok(id) => { Ok(id) }
-                Err(_) => { Err(Error::RollbackTransaction) }
+                Err(err) => { 
+                    println!("{}", err);
+                    Err(Error::RollbackTransaction)
+                }
             }
-        }).map_err(|err| { AppError::from_diesel_err(err, "create talk")})
+        }).map_err(|err| { 
+            println!("{}", err);
+            AppError::from_diesel_err(err, "create talk")}
+        )
     }
 
     pub fn list_visible_talks(&self) -> Result<Vec<Talk>, AppError> {
