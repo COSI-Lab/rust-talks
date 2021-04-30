@@ -34,10 +34,10 @@ function create() {
     // Get values
     let name = document.getElementById("name");
     let type = document.getElementById("type");
-    let desc = document.getElementById("description");
+    let description = document.getElementById("description");
 
     // Check for errors
-    if (!name || !type || !desc) {
+    if (!name || !type || !description) {
         return;
     }
 
@@ -46,12 +46,12 @@ function create() {
         "event": "Create",
         "name": name.value,
         "talk_type": type.value,
-        "desc": desc.value,
+        "description": description.value,
     };
 
     name.value = ""
     type.value = ""
-    desc.value = ""
+    description.value = ""
 
     // Send it
     websocket.send(JSON.stringify(event));
@@ -153,8 +153,8 @@ function addTalk(json) {
     c2.innerHTML = json.talk_type;
 
     var c3 = row.insertCell(3);
-    c3.setAttribute("class", "desc");
-    c3.innerHTML = json.desc;
+    c3.setAttribute("class", "description");
+    c3.innerHTML = json.description;
 
     var c4 = row.insertCell(4);
     c4.setAttribute("class", "actions");

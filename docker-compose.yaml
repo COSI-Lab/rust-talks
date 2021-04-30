@@ -2,25 +2,20 @@ version: "3.9"
 
 services:
   web:
-    depends_on: 
-      - db
+    volumes:
+      - ${PWD}/talks.db:/app/talks.db
     ports:
       - 8001:8001
     environment:
       VIRTUAL_PORT: 8001
       VIRTUAL_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
-      LETSENCRYPT_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
-    volumes:
-      - ./talks.db:/rust-talks/talks.db
+      #LETSENCRYPT_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
     build:
       context: .
       args: 
         VIRTUAL_PORT: 8001
 
-volumes:
-  database-data:
-
-networks:
-  default:
-    external:
-      name: nginx-proxy
+#networks:
+#  default:
+#    external:
+#      name: nginx-proxy

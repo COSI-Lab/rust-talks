@@ -3,17 +3,17 @@ use serde::{Deserialize, Serialize};
 use crate::schema::talks;
 
 use diesel::{backend::Backend, serialize::{ToSql, Output}, sql_types::Integer};
-use std::io::Write;
+use std::{fmt::Display, io::Write};
 use diesel::{serialize, deserialize};
 use diesel::deserialize::FromSql;
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, AsExpression, FromSqlRow)]
+#[derive(Deserialize, Debug, Copy, Clone, PartialEq, AsExpression, FromSqlRow)]
 #[sql_type = "Integer"]
 pub enum TalkType {
     ForumTopic,
-    LightingTalk,
-    ProjectUpdates,
-	Announcements,
+    LightningTalk,
+    ProjectUpdate,
+	Announcement,
     AfterMeetingSlot
 }
 
@@ -36,11 +36,36 @@ where
     fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
         match i32::from_sql(bytes)? {
             0 => Ok(TalkType::ForumTopic),
-            1 => Ok(TalkType::LightingTalk),
-            2 => Ok(TalkType::ProjectUpdates),
-            3 => Ok(TalkType::Announcements),
+            1 => Ok(TalkType::LightningTalk),
+            2 => Ok(TalkType::ProjectUpdate),
+            3 => Ok(TalkType::Announcement),
             4 => Ok(TalkType::AfterMeetingSlot),
             int => Err(format!("Invalid TalkType {}", int).into()),
+        }
+    }
+}
+
+impl Serialize for TalkType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: serde::Serializer {
+        serializer.serialize_str(match *self {
+            TalkType::ForumTopic => "forum topic",
+            TalkType::LightningTalk => "lightning talk",
+            TalkType::ProjectUpdate => "project update",
+            TalkType::Announcement => "announcement",
+            TalkType::AfterMeetingSlot => "after meeting slot"
+        })
+    }
+}
+
+impl Display for TalkType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            TalkType::ForumTopic => { f.write_str("forum topic") }
+            TalkType::LightningTalk => { f.write_str("lightning talk") }
+            TalkType::ProjectUpdate => { f.write_str("project update") }
+            TalkType::Announcement => { f.write_str("announcement") }
+            TalkType::AfterMeetingSlot => { f.write_str("after meeting slot") }
         }
     }
 }
@@ -57,9 +82,9 @@ pub struct Talk {
 // Struct for creating Book
 #[derive(Debug, Clone, Insertable)]
 #[table_name = "talks"]
-pub struct CreateTalk {
-    pub name: String,
+pub struct CreateTalk<'a> {
+    pub name: &'a String,
     pub talk_type: TalkType,
-    pub description: String,
+    pub description: &'a String,
     pub is_visible: bool
 }
