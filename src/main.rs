@@ -44,7 +44,6 @@ async fn main() {
     };
 
     let pool = sqlite_pool(&database_url);
-    println!("{}", database_url);
 
     // Index.html welcome route
     let welcome_route = warp::path::end()

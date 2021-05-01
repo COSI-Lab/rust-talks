@@ -29,7 +29,7 @@ impl DBManager {
             let id = diesel::insert_into(talks::table) 
                 .values(&talk)
                 .execute(&self.connection)
-                .map(|changes| {println!("{}", changes); last_insert_rowid(&self.connection)});
+                .map(|_| last_insert_rowid(&self.connection));
 
             match id {
                 Ok(id) => { Ok(id) }
