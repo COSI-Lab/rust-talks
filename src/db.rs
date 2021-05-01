@@ -49,6 +49,7 @@ impl DBManager {
 
         talks
             .filter(is_visible.eq(true))
+            .order(talk_type)
             .load(&self.connection)
             .map_err(|err| {
                 AppError::from_diesel_err(err, "listing visible talks")
