@@ -104,10 +104,15 @@ pub async fn authenticate(request: AuthenticateRequest, clients: Clients) -> Res
 pub async fn visible_talks(db: DBManager) -> Result<impl Reply, Rejection> {
     match db.list_visible_talks() {
         Ok(talks) => { 
-            Ok(talks.iter()
+            let mut str = talks.iter()
                 .filter_map(|talk| serde_json::to_string(talk).ok())
-                .fold(String::from("["), |a, b| a + &b + ",") + "]"
-            )
+                .fold(String::from("["), |a, b| a + &b + ",");            
+            
+            // remove the last `,`
+            str.pop();
+            str.push(']');
+
+            Ok(str)
         }
         Err(err) => { Err(err.into()) }
     }

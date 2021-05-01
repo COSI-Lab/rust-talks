@@ -14,7 +14,7 @@ pub enum EventRequest {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(tag = "event")]
 pub enum EventResponse {
-    Show { id: i32, name: String, talk_type: TalkType, desc: String },
+    Show { id: i32, name: String, talk_type: TalkType, description: String },
     Hide { id: i32 },
     Authenticate { authenticated: bool },
     NOP,
@@ -51,7 +51,7 @@ pub fn process_event(event: EventRequest, db: &DBManager) -> EventResponse {
             // Return data
             match db.create_talk(talk) {
                 Ok(id) => {
-                    EventResponse::Show { id, name, talk_type, desc }
+                    EventResponse::Show { id, name, talk_type, description: desc }
                 }
                 Err(_) => {
                     EventResponse::NOP

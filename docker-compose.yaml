@@ -5,17 +5,17 @@ services:
     volumes:
       - ${PWD}/talks.db:/app/talks.db
     ports:
-      - 8001:8001
+      - 8005:8005
     environment:
-      VIRTUAL_PORT: 8001
-      VIRTUAL_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
+      VIRTUAL_PORT: 8005
+      VIRTUAL_HOST: dubsdot2.cosi.clarkson.edu,dubsdot2.cslabs.clarkson.edu
       #LETSENCRYPT_HOST: talks.cosi.clarkson.edu,talks.cslabs.clarkson.edu
     build:
       context: .
       args: 
-        VIRTUAL_PORT: 8001
+        VIRTUAL_PORT: 8005
 
-#networks:
-#  default:
-#    external:
-#      name: nginx-proxy
+networks:
+  default:
+    external:
+      name: nginx-proxy

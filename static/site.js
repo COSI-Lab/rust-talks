@@ -96,6 +96,13 @@ window.onload = function () {
     register();
 };
 
+var ordering = {}
+ordering["forum topic"] = 1
+ordering["lightning talk"] = 2
+ordering["project update"] = 3
+ordering["announcement"] = 4
+ordering["after meeting slot"] = 5
+
 function register() {
     // Register a websocket connection
     fetch("/register")
@@ -103,13 +110,6 @@ function register() {
             return response.json();
         })
         .then(function (result) {
-            var ordering = {}
-            ordering["forum topic"] = 1
-            ordering["lightning talk"] = 2
-            ordering["project update"] = 3
-            ordering["announcement"] = 4
-            ordering["after meeting slot"] = 5
-
             authenticated = result.authenticated;
             websocket = new WebSocket("ws://" + window.location.host + "/ws/" + result.id);
             websocket.onmessage = function (event) {
@@ -137,11 +137,17 @@ function register() {
                         return response.json();
                     })
                     .then(function (result) {
-                        var table = document.getElementById('table');
+                        // Empty the table
+                        var rows = document.getElementById('tb').children;
 
+                        for (let i = rows.length - 2; i >= 0; i--) {
+                            rows[i].remove();
+                        }
+
+                        result.forEach(talk => addTalk(talk));
                     });
 
-                console.log("Connection closed getting new connection");
+                console.log("connection closed getting new connection");
                 register();
             }
             wsID = result.id;
@@ -186,7 +192,7 @@ function addTalk(json) {
 
     var c3 = row.insertCell(3);
     c3.setAttribute("class", "desc");
-    c3.innerHTML = json.desc;
+    c3.innerHTML = json.description;
 
     var c4 = row.insertCell(4);
     c4.setAttribute("class", "actions");
