@@ -22,6 +22,7 @@ impl AppError {
         }
     }
 
+    #[allow(dead_code)]
     pub fn to_http_status(&self) -> warp::http::StatusCode {
         match self.err_type {
             ErrorType::NotFound => warp::http::StatusCode::NOT_FOUND,

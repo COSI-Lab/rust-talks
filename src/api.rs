@@ -1,4 +1,4 @@
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 use askama::Template;
 use uuid::Uuid;
 use warp::{Rejection, Reply, hyper::StatusCode, reply::{html, json}};

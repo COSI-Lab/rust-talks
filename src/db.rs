@@ -55,6 +55,7 @@ impl DBManager {
             })
     }
 
+    #[allow(dead_code)]
     pub fn list_all_talks(&self) -> Result<Vec<Talk>, AppError> {
         use super::schema::talks::dsl::*;
 
@@ -77,6 +78,7 @@ impl DBManager {
             })
     }
 
+    #[allow(dead_code)]
     pub fn unhide_talk(&self, talk_id: i32) -> Result<usize, AppError> {
         use super::schema::talks::dsl::*;
 
@@ -89,6 +91,7 @@ impl DBManager {
             })
     }
 
+    #[allow(dead_code)]
     pub fn delete_talk(&self, talk_id: i32) -> Result<usize, AppError> {
         use super::schema::talks::dsl::*;
 

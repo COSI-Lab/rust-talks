@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate diesel;
 
-use std::{collections::HashMap, convert::Infallible, env, net::IpAddr, sync::Arc};
+use std::{collections::HashMap, convert::Infallible, env, sync::Arc};
 use db::DBManager;
 use diesel::{SqliteConnection, r2d2::{ConnectionManager, Pool}};
 use error::{AppError, ErrorType};
