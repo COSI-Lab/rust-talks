@@ -111,7 +111,7 @@ function register() {
         })
         .then(function (result) {
             authenticated = result.authenticated;
-            websocket = new WebSocket("ws://" + window.location.host + "/ws/" + result.id);
+            websocket = new WebSocket("wss://" + window.location.host + "/ws/" + result.id);
             websocket.onmessage = function (event) {
                 let json = JSON.parse(event.data);
 
