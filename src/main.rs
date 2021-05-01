@@ -1,22 +1,23 @@
-use std::{collections::HashMap, convert::Infallible, net::IpAddr, sync::Arc};
-use events::{EventRequest, Talk};
-use futures::channel::mpsc::{UnboundedSender, unbounded};
+#[macro_use]
+extern crate diesel;
+
+use std::{collections::HashMap, convert::Infallible, env, sync::Arc};
+use db::DBManager;
+use diesel::{SqliteConnection, r2d2::{ConnectionManager, Pool}};
+use error::{AppError, ErrorType};
+use futures::channel::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
-use warp::{Filter, Rejection, ws::Message};
+use warp::{Filter, reject, ws::Message};
 
-mod handler;
+mod api;
 mod events;
+mod db;
+mod error;
+mod model;
+pub mod schema;
 
-// Result type
-type Result<T> = std::result::Result<T, Rejection>;
+// Clients type
 type Clients = Arc<RwLock<HashMap<String, Client>>>;
-type EventQueue = Arc<RwLock<Queue>>;
-type DB = Arc<RwLock<Vec<Talk>>>;
-
-#[derive(Debug, Clone)]
-pub struct Queue {
-    pub queue: UnboundedSender<(EventRequest, String)>,
-}
 
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -30,46 +31,54 @@ async fn main() {
     let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
 
     // Create db
-    println!("Generating in memory database...");
-    let db = events::create_db().await;
-    println!("Loaded {} talks", db.read().await.len());
+    let database_url = {
+        let url = env::var_os("DATABASE_URL");
+        match url {
+            Some(url) => {
+                url.into_string().unwrap()
+            }
+            None => {
+                String::from("talks.db")
+            }
+        }
+    };
 
-    // Create MPSC event queue channel
-    let (tx, rx) = unbounded::<(EventRequest, String)>();
-    let queue: EventQueue = Arc::new(RwLock::new(Queue { queue: tx }));
+    let pool = sqlite_pool(&database_url);
+    println!("{}", database_url);
 
     // Index.html welcome route
     let welcome_route = warp::path::end()
-        .and(with_db(db.clone()))
-        .and_then(handler::welcome_handler);
+        .and(with_db_access_manager(pool.clone()))
+        .and_then(api::welcome_handler);
 
     // Indicates whether the service is up
     let health_route = warp::path("health")
-        .and_then(handler::health_handler);
+        .and(with_clients(clients.clone()))
+        .and_then(api::health_handler);
 
     // Registers a new client for live updates
     let register = warp::path("register")
-        .and(warp::header::<IpAddr>("x-forwarded-for"))
+        .and(warp::header::optional("x-forwarded-for"))
         .and(with_clients(clients.clone()))
-        .and_then(handler::register_handler);
+        .and_then(api::register_handler);
 
     let authenticate = warp::path("authenticate")
         .and(warp::body::json())
         .and(with_clients(clients.clone()))
-        .and_then(handler::authenticate);
+        .and_then(api::authenticate);
 
     // Gets talks route
     let talks = warp::path("talks")
-        .and(with_db(db.clone()))
-        .and_then(handler::visible_talks);
+        .and(with_db_access_manager(pool.clone()))
+        .and_then(api::visible_talks);
 
     // Websocket endpoint
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(warp::path::param())
         .and(with_clients(clients.clone()))
-        .and(with_events(queue.clone()))
-        .and_then(handler::ws_handler);
+        .and(with_db_access_manager(pool.clone()))
+        .and_then(api::ws_handler);
 
     // Host static files in ./static
     let static_files = warp::path("static")
@@ -85,11 +94,9 @@ async fn main() {
         .or(static_files)
         .with(warp::cors().allow_any_origin());
     
-    // Create a new thread dedicated to processing incoming events
-    tokio::task::spawn(events::process_events(rx, clients, db));
-
     // Serve the routes
-    let port = std::env!("VIRTUAL_PORT").parse::<u16>().unwrap();
+
+    let port = std::option_env!("VIRTUAL_PORT").unwrap_or("8000").parse::<u16>().unwrap();
 
     println!("Serving on port {}...", port);
     warp::serve(routes).run(([0, 0, 0, 0], port)).await;
@@ -100,12 +107,20 @@ fn with_clients(clients: Clients) -> impl Filter<Extract = (Clients,), Error = I
     warp::any().map(move || clients.clone())
 }
 
-// This is spooky code that allows handlers to access the event queue  
-fn with_events(queue: EventQueue) -> impl Filter<Extract = (EventQueue,), Error = Infallible> + Clone {
-    warp::any().map(move || queue.clone())
+type SqlitePool = Pool<ConnectionManager<SqliteConnection>>;
+
+fn sqlite_pool(db_url: &str) -> SqlitePool {
+    let manager = ConnectionManager::<SqliteConnection>::new(db_url);
+    Pool::new(manager).expect("Sqlite connection pool could not be created")
 }
 
-// This is spooky code that allows handlers to access the db of talks
-fn with_db(db: DB) -> impl Filter<Extract = (DB,), Error = Infallible> + Clone {
-    warp::any().map(move || db.clone())
+fn with_db_access_manager(pool: SqlitePool) -> impl Filter<Extract = (DBManager,), Error = warp::Rejection> + Clone {
+    warp::any()
+        .map(move || pool.clone())
+        .and_then(|pool: SqlitePool| async move {  match pool.get() {
+            Ok(conn) => Ok(DBManager::new(conn)),
+            Err(err) => Err(reject::custom(
+                AppError::new(format!("Error getting connection from pool: {}", err.to_string()).as_str(), ErrorType::Internal))
+            ),
+        }})
 }

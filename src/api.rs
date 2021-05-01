@@ -1,13 +1,12 @@
 use std::net::IpAddr;
 use askama::Template;
 use uuid::Uuid;
-use warp::{Reply, hyper::StatusCode, reply::{html, json}};
+use warp::{Rejection, Reply, hyper::StatusCode, reply::{html, json}};
 use serde::{Serialize, Deserialize};
-use futures::{SinkExt, StreamExt};
-use futures::channel::mpsc;
+use futures::{StreamExt, channel::mpsc};
 use warp::ws::WebSocket;
 
-use crate::{Client, Clients, DB, EventQueue, Result, events::{EventRequest, Talk}};
+use crate::{Client, Clients, db::DBManager, events::{EventRequest, send_events, process_event}, model::Talk};
 
 #[derive(Template)]
 #[template(path = "index.j2")]
@@ -16,29 +15,25 @@ struct IndexTemplate {
 }
 
 // Return the talks homepage
-pub async fn welcome_handler(db: DB) -> Result<impl Reply> {
-    let mut talks: Vec<Talk> = Vec::new();
+pub async fn welcome_handler(db: DBManager) -> Result<impl Reply, Rejection> {
+    match db.list_visible_talks() {
+        Ok(talks) => { 
+            let template = IndexTemplate {
+                talks
+            };
 
-    db.read().await.iter()
-        .filter(|talk| talk.is_visible)
-        .for_each(|talk| talks.push(talk.clone()));
-
-    let template = IndexTemplate {
-        talks
-    };
-
-    Ok(html(template.render().unwrap()))
-}
-
-// Always returns 200
-pub async fn health_handler() -> Result<impl Reply> {
-    let x = Password { password: String::from("password") };
-    match serde_json::to_string(&x) {
-        Ok(s) => { Ok(s) }
-        Err(_) => { Ok(String::from("not ok")) }
+            Ok(html(template.render().unwrap()))
+        }
+        Err(err) => { Err(err.into()) }
     }
 }
 
+// Always returns 200
+pub async fn health_handler(clients: Clients) -> Result<impl Reply, Rejection>  {
+    let clients = clients.read().await;
+
+    Ok(format!("Open Connections: {}\n", clients.len()))
+}
 
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
@@ -47,19 +42,23 @@ pub struct RegisterResponse {
 }
 
 // Adds a new client to the clients map and returns URL for websocket connection
-pub async fn register_handler(addr: IpAddr, clients: Clients) -> Result<impl Reply> {
-    // 128 bit UUID, a colision might as well be impossible
+pub async fn register_handler(addr: Option<IpAddr>, clients: Clients) -> Result<impl Reply, Rejection> {
+    // 128 bit UUID, a colision should be impossible
     let id = Uuid::new_v4().simple().to_string();
 
-    // Authenticate the user based on their ip address
-    let authenticated: bool = match addr {
-        IpAddr::V4(ip) => { 
-            // check the ip is in '128.153.0.0/16'
-            let octects = ip.octets();
-            octects[0] == 128 && octects[1] == 153
-        }
-        IpAddr::V6(_) => { false }
-    };
+    let mut authenticated: bool = false;
+
+    if let Some(addr) = addr {
+        // Authenticate the user based on their ip address
+        authenticated = match addr {
+            IpAddr::V4(ip) => { 
+                // check the ip is in '128.153.0.0/16'
+                let octects = ip.octets();
+                octects[0] == 128 && octects[1] == 153
+            }
+            IpAddr::V6(_) => { false }
+        };
+    }
 
     // Adds new client to map
     clients.write().await.insert(
@@ -83,7 +82,7 @@ pub struct AuthenticateRequest {
     password: String,
 }
 
-pub async fn authenticate(request: AuthenticateRequest, clients: Clients) -> Result<impl Reply> {
+pub async fn authenticate(request: AuthenticateRequest, clients: Clients) -> Result<impl Reply, Rejection> {
     // Check if the client is already authenticated
     if request.password == "conway" {
         let mut writer = clients.write().await;
@@ -102,20 +101,28 @@ pub async fn authenticate(request: AuthenticateRequest, clients: Clients) -> Res
     return Ok(StatusCode::FORBIDDEN);
 }
 
-pub async fn visible_talks(db: DB) -> Result<impl Reply> {
-    let result = db.read().await.iter()
-        .filter(|talk| talk.is_visible)
-        .filter_map(|talk| serde_json::to_string(talk).ok())
-        .fold(String::from("["), |a, b| a + &b + ",");
+pub async fn visible_talks(db: DBManager) -> Result<impl Reply, Rejection> {
+    match db.list_visible_talks() {
+        Ok(talks) => { 
+            let mut str = talks.iter()
+                .filter_map(|talk| serde_json::to_string(talk).ok())
+                .fold(String::from("["), |a, b| a + &b + ",");            
+            
+            // remove the last `,`
+            str.pop();
+            str.push(']');
 
-    Ok(result + "]")
+            Ok(str)
+        }
+        Err(err) => { Err(err.into()) }
+    }
 }
 
 // Turns HTTP request into a websocket
-pub async fn ws_handler(ws: warp::ws::Ws, id: String, clients: Clients, queue: EventQueue) -> Result<impl Reply> {
+pub async fn ws_handler(ws: warp::ws::Ws, id: String, clients: Clients, db: DBManager) -> Result<impl Reply, Rejection> {
     let client = clients.read().await.get(&id).cloned();
     match client {
-        Some(c) => Ok(ws.on_upgrade(move |socket| client_connection(socket, id, clients, c, queue))),
+        Some(c) => Ok(ws.on_upgrade(move |socket| client_connection(socket, id, clients, c, db))),
         None => Err(warp::reject::not_found()),
     }
 }
@@ -126,7 +133,7 @@ pub struct Password {
 }
 
 // Handles the connection to the websocket
-pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client, queue: EventQueue) {
+pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client, db: DBManager) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded();
 
@@ -156,10 +163,8 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
             if let Ok(str) = msg.to_str() {
                 // Parse message as event
                 if let Ok(event) = serde_json::from_str::<EventRequest>(&str) {
-                    let mut text = str.to_string();
-                    text.push('\n');
-
-                    let _ = queue.write().await.queue.send((event, text)).await;
+                    let response = process_event(event, &db);
+                    send_events(clients.clone(), response).await;
                 }
             }
         }

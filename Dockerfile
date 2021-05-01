@@ -12,6 +12,7 @@ RUN sed -i 's#dummy.rs#src/main.rs#' Cargo.toml
 COPY src src
 COPY templates templates
 ARG VIRTUAL_PORT
+COPY src src
 
 # Build release
 RUN touch src/main.rs
@@ -19,6 +20,7 @@ RUN cargo build --release
 
 # Run binary
 FROM rust:slim
+RUN apt-get update && apt-get install -y sqlite3
 WORKDIR /app
 COPY --from=builder /rust-talks/target/release/rust_talks rust_talks
 COPY static static

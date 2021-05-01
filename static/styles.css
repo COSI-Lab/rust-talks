@@ -74,7 +74,7 @@ table tbody .event .type {
     width: 20%;
 }
 
-table tbody .event .desc {
+table tbody .event .description {
     word-break: break-word;
     width: 45%;
 }
