@@ -9,6 +9,7 @@ RUN cargo build --release
 RUN sed -i 's#dummy.rs#src/main.rs#' Cargo.toml
 
 # Prepare build
+COPY src src
 COPY templates templates
 ARG VIRTUAL_PORT
 COPY src src
