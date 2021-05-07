@@ -54,6 +54,9 @@ function create() {
     desc.value = ""
 
     // Send it
+    if (websocket.status != WebSocket.OPEN && websocket.status != WebSocket.CONNECTING)
+        register()
+
     websocket.send(JSON.stringify(event));
 }
 
@@ -67,6 +70,9 @@ function hide(id) {
         "event": "Hide",
         "id": id,
     };
+
+    if (websocket.status != WebSocket.OPEN && websocket.status != WebSocket.CONNECTING)
+        register()
 
     websocket.send(JSON.stringify(event));
 }
@@ -87,11 +93,6 @@ window.onload = function () {
                 button.click();
             }
         }, false);
-
-    window.onbeforeunload = function () {
-        websocket.onclose = function () { }; // disable onclose handler first
-        websocket.close();
-    };
 
     register();
 };
@@ -150,6 +151,12 @@ function register() {
                 console.log("connection closed getting new connection");
                 register();
             }
+
+            window.onbeforeunload = function () {
+                websocket.onclose = function () { }; // disable onclose handler first
+                websocket.close();
+            };
+
             wsID = result.id;
         })
         .catch(function (error) {
