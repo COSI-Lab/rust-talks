@@ -54,7 +54,7 @@ function create() {
     desc.value = ""
 
     // Send it
-    if (websocket.status != WebSocket.OPEN && websocket.status != WebSocket.CONNECTING)
+    if (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING)
         register()
 
     websocket.send(JSON.stringify(event));
@@ -71,7 +71,7 @@ function hide(id) {
         "id": id,
     };
 
-    if (websocket.status != WebSocket.OPEN && websocket.status != WebSocket.CONNECTING)
+    if (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING)
         register()
 
     websocket.send(JSON.stringify(event));
