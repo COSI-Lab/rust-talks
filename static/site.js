@@ -54,8 +54,7 @@ function create() {
     desc.value = ""
 
     // Send it
-    if (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING)
-        register()
+    checkAndReset().await;
 
     websocket.send(JSON.stringify(event));
 }
@@ -71,9 +70,8 @@ function hide(id) {
         "id": id,
     };
 
-    if (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING)
-        register()
-
+    // Send it
+    checkAndReset().await;
     websocket.send(JSON.stringify(event));
 }
 
@@ -97,9 +95,13 @@ window.onload = function () {
     register();
 };
 
-function checkAndReset() {
+async function checkAndReset() {
     // Check if websocket is running
-    if (!websocket || (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING)) {
+    if (!websocket) {
+        register();
+    }
+
+    if (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING) {
         // sync the visible talks on screen
         fetch("/talks")
             .then(function (response) {
