@@ -3,10 +3,8 @@ use askama::Template;
 use uuid::Uuid;
 use warp::{Rejection, Reply, hyper::StatusCode, reply::{html, json}};
 use serde::{Serialize, Deserialize};
-use futures::{StreamExt, channel::mpsc};
-use warp::ws::WebSocket;
 
-use crate::{Client, Clients, db::DBManager, events::{EventRequest, send_events, process_event}, model::Talk};
+use crate::{Clients, client::{Client, client_connection}, db::DBManager, model::Talk};
 
 #[derive(Template)]
 #[template(path = "index.j2")]
@@ -52,11 +50,13 @@ pub async fn register_handler(addr: Option<IpAddr>, clients: Clients) -> Result<
         // Authenticate the user based on their ip address
         authenticated = match addr {
             IpAddr::V4(ip) => { 
-                // check the ip is in '128.153.0.0/16'
                 let octects = ip.octets();
                 octects[0] == 128 && octects[1] == 153
             }
-            IpAddr::V6(_) => { false }
+            IpAddr::V6(ip) => {
+                let segments = ip.segments();
+                segments[0] == 0x2605 && segments[1] == 0x6480 && segments[3] == 0xc051
+            }
         };
     }
 
@@ -66,6 +66,7 @@ pub async fn register_handler(addr: Option<IpAddr>, clients: Clients) -> Result<
         Client {
             sender: None,
             authenticated,
+            second_chance: true,
         }
     );
 
@@ -130,46 +131,4 @@ pub async fn ws_handler(ws: warp::ws::Ws, id: String, clients: Clients, db: DBMa
 #[derive(Serialize, Deserialize)]
 pub struct Password {
     password: String
-}
-
-// Handles the connection to the websocket
-pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client, db: DBManager) {
-    let (client_ws_sender, mut client_ws_rcv) = ws.split();
-    let (client_sender, client_rcv) = mpsc::unbounded();
-
-    // Create a new task that just forwards all messages from client_rcv into the websocket
-    tokio::task::spawn(client_rcv.forward(client_ws_sender));
-
-    // Update client
-    client.sender = Some(client_sender);
-    clients.write().await.insert(id.clone(), client);
-
-    println!("{} connected", id);
-
-    // Red messages forever
-    while let Some(result) = client_ws_rcv.next().await {
-        // Checks if the client is authenticated
-        if clients.read().await.get(&id).map_or(false, |client| client.authenticated) {
-            // Read message
-            let msg = match result {
-                Ok(msg) => msg,
-                Err(e) => {
-                    eprintln!("error receiving ws message for id: {}): {}", id.clone(), e);
-                    break;
-                }
-            };
-
-            // If message is a string
-            if let Ok(str) = msg.to_str() {
-                // Parse message as event
-                if let Ok(event) = serde_json::from_str::<EventRequest>(&str) {
-                    let response = process_event(event, &db);
-                    send_events(clients.clone(), response).await;
-                }
-            }
-        }
-    }
-
-    clients.write().await.remove(&id);
-    println!("{} disconnected", id);
 }

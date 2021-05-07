@@ -1,35 +1,28 @@
+#![feature(hash_drain_filter)]
 #[macro_use]
 extern crate diesel;
 
-use std::{collections::HashMap, convert::Infallible, env, sync::Arc};
+use std::{convert::Infallible, env};
 use db::DBManager;
 use diesel::{SqliteConnection, r2d2::{ConnectionManager, Pool}};
 use error::{AppError, ErrorType};
-use futures::channel::mpsc::UnboundedSender;
-use tokio::sync::RwLock;
-use warp::{Filter, reject, ws::Message};
+use warp::{Filter, hyper::Uri, reject};
+
+use crate::client::{Clients, create_clients, garabage_collector};
 
 mod api;
 mod events;
 mod db;
 mod error;
 mod model;
+mod client;
 pub mod schema;
-
-// Clients type
-type Clients = Arc<RwLock<HashMap<String, Client>>>;
-
-#[derive(Debug, Clone)]
-pub struct Client {
-    pub sender: Option<UnboundedSender<std::result::Result<Message, warp::Error>>>,
-    pub authenticated: bool
-}
 
 #[tokio::main]
 async fn main() {
     // Current clients
-    let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
-
+    let clients: Clients = create_clients();
+    
     // Create db
     let database_url = {
         let url = env::var_os("DATABASE_URL");
@@ -83,19 +76,29 @@ async fn main() {
     let static_files = warp::path("static")
         .and(warp::fs::dir("static"));
 
-    // Combine all routes
-    let routes = welcome_route
+    // start garabage collector
+    tokio::spawn(garabage_collector(clients));
+
+    // Serve the routes
+    let port = std::option_env!("VIRTUAL_PORT").unwrap_or("8000").parse::<u16>().unwrap();
+
+    let valid = warp::host::exact("talks.cosi.clarkson.edu")
+        .or(warp::host::exact("talks.cslabs.clarkson.edu"))
+        .unify();
+
+    let routes = valid
+    .and(
+        welcome_route
         .or(health_route)
         .or(register)
         .or(authenticate)
         .or(talks)
         .or(ws_route)
         .or(static_files)
-        .with(warp::cors().allow_any_origin());
-    
-    // Serve the routes
-
-    let port = std::option_env!("VIRTUAL_PORT").unwrap_or("8000").parse::<u16>().unwrap();
+    ).or(
+        warp::any()
+        .map(|| warp::redirect::temporary(Uri::from_static("https://talks.cosi.clarkson.edu")))
+    );
 
     println!("Serving on port {}...", port);
     warp::serve(routes).run(([0, 0, 0, 0], port)).await;
