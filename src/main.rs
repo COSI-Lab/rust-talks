@@ -96,7 +96,7 @@ async fn main() {
         .or(static_files)
     ).or(
         warp::any()
-        .map(|| warp::redirect::temporary(Uri::from_static("https://talks.cosi.clarkson.edu")))
+        .map(|| warp::redirect(Uri::from_static("https://talks.cosi.clarkson.edu")))
     );
 
     println!("Serving on port {}...", port);
