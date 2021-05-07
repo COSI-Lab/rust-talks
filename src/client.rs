@@ -68,22 +68,26 @@ pub async fn garabage_collector(clients: Clients) {
 
     loop {
         std::thread::sleep(Duration::from_secs(60));
-
         let mut writer = clients.write().await;
+        let mut remove = Vec::new();
 
-        let count = writer.drain_filter(|_, v| 
-            v.sender.is_none() && {
+        for (k, v) in writer.iter_mut() {
+            if v.sender.is_none() {
                 if v.second_chance {
                     v.second_chance = false;
-                    false
                 } else {
-                    true
+                    remove.push(k.clone());
                 }
             }
-        ).count();
+        }
 
-        if count > 0 {
-            println!("cleaned {} clients", count);
+        if remove.len() > 0 {
+            println!("cleaned {} clients", remove.len());
+        }
+
+        let mut writer = clients.write().await;
+        for k in remove {
+            writer.remove(&k);
         }
     }
 }
