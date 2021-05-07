@@ -2,3 +2,4 @@
 events.txt
 .DS_Store
 talks.db
+Cargo.lock
