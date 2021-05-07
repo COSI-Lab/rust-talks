@@ -97,6 +97,33 @@ window.onload = function () {
     register();
 };
 
+function checkAndReset() {
+    // Check if websocket is running
+    if (!websocket || (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING)) {
+        // sync the visible talks on screen
+        fetch("/talks")
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (result) {
+                // Empty the table
+                var rows = document.getElementById('tb').children;
+
+                for (let i = rows.length - 2; i >= 0; i--) {
+                    rows[i].remove();
+                }
+
+                result.forEach(talk => addTalk(talk));
+            });
+
+        // get a new websocket
+        console.log("connection closed getting new connection");
+        register();
+    }
+}
+// Periodically check that the websocket is open, if not create a new one
+setInterval(checkAndReset, 10000);
+
 var ordering = {}
 ordering["forum topic"] = 1
 ordering["lightning talk"] = 2
@@ -130,33 +157,6 @@ function register() {
                     }
                 }
             }
-
-            websocket.onclose = function () {
-                // Make sure the current talks are up to date
-                fetch("/talks")
-                    .then(function (response) {
-                        return response.json();
-                    })
-                    .then(function (result) {
-                        // Empty the table
-                        var rows = document.getElementById('tb').children;
-
-                        for (let i = rows.length - 2; i >= 0; i--) {
-                            rows[i].remove();
-                        }
-
-                        result.forEach(talk => addTalk(talk));
-                    });
-
-                console.log("connection closed getting new connection");
-                register();
-            }
-
-            window.onbeforeunload = function () {
-                websocket.onclose = function () { }; // disable onclose handler first
-                websocket.close();
-            };
-
             wsID = result.id;
         })
         .catch(function (error) {
