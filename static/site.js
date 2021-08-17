@@ -75,8 +75,8 @@ function hide(id) {
     websocket.send(JSON.stringify(event));
 }
 
-var websocket;
-var wsID;
+var websocket = null;
+var wsID = null;
 var authenticated = false;
 
 window.onload = function () {
