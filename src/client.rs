@@ -86,7 +86,6 @@ pub async fn garabage_collector(clients: Clients) {
                 println!("cleaned {} clients", remove.len());
             }
     
-            let mut writer = clients.write().await;
             for k in remove {
                 writer.remove(&k);
             }
