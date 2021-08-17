@@ -99,9 +99,7 @@ async function checkAndReset() {
     // Check if websocket is running
     if (!websocket) {
         register();
-    }
-
-    if (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING) {
+    } else if (websocket.readyState != WebSocket.OPEN && websocket.readyState != WebSocket.CONNECTING) {
         // sync the visible talks on screen
         fetch("/talks")
             .then(function (response) {

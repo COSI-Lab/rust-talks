@@ -3,7 +3,7 @@ version: "3.9"
 services:
   web:
     volumes:
-      - ${PWD}/talks.db:/app/talks.db
+      - ./talks.db:/app/talks.db
     ports:
       - 8001:8001
     environment:
