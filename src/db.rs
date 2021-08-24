@@ -1,4 +1,4 @@
-use diesel::{Connection, QueryDsl, RunQueryDsl, SqliteConnection, r2d2::{ConnectionManager, PooledConnection}, result::Error};
+use diesel::{Connection, QueryDsl, RunQueryDsl, SqliteConnection, Table, r2d2::{ConnectionManager, PooledConnection}, result::Error};
 
 use crate::{error::AppError, model::{CreateTalk, Talk}};
 use crate::diesel::ExpressionMethods;
@@ -61,6 +61,7 @@ impl DBManager {
         use super::schema::talks::dsl::*;
 
         talks
+            .select(talks::all_columns())
             .load(&self.connection)
             .map_err(|err| {
                 AppError::from_diesel_err(err, "listing all talks")

@@ -29,34 +29,13 @@
                     <td class="name"> {{talk.name}} </td>
                     <td class="type"> {{talk.talk_type}} </td>
                     <td class="description"> {{talk.description}} </td>
-                    <td class="actions"> <button onclick="hide({{talk.id}})" > x </button> </td>
                 </tr>
                 {% endfor %}
-                <tr>
-                    <th>
-                        <input id="name" type="text" placeholder="Name" value="" autocomplete="off">
-                    </th>
-                    <th>
-                        <select id="type">
-                            <option value="ForumTopic">Forum Topic</option>
-                            <option value="LightningTalk">Lightning Talk</option>
-                            <option value="ProjectUpdate">Project Update</option>
-                            <option value="Announcement">Announcement</option>
-                            <option value="AfterMeetingSlot">After-Meeting Slot</option>
-                        </select>
-                    </th>
-                    <th>
-                        <input id="description" type="text" placeholder="Description" value="" autocomplete="off">
-                    </th>
-                    <th>
-                        <button id="create" onclick="create()"> create </button>
-                    </th>
-                </tr>
             </tbody>
         </table>
-        {# <p style="text-align: center;">
-            <button onclick="parseToMM()">Parse to Meeting Minutes</button>
-        </p> #}
+        <p style="text-align: center;">
+            Ask an admin if you wish to have a talk completely erased
+        </p>
         <h5> <a href="https://github.com/COSI-Lab/rust-talks"> V1.5 </a> </h5>
     </body>
 </html>

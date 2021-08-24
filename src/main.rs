@@ -37,10 +37,15 @@ async fn main() {
 
     let pool = sqlite_pool(&database_url);
 
-    // Index.html welcome route
+    // index welcome route
     let welcome_route = warp::path::end()
         .and(with_db_access_manager(pool.clone()))
         .and_then(api::welcome_handler);
+
+    // show all talks in order by id (chronological order)
+    let all_route = warp::path("all")
+        .and(with_db_access_manager(pool.clone()))
+        .and_then(api::all_talks_handler);
 
     // Indicates whether the service is up
     let health_route = warp::path("health")
@@ -85,10 +90,13 @@ async fn main() {
         .or(warp::host::exact("talks.cslabs.clarkson.edu"))
         .unify();
 
+    // let valid = warp::any();
+
     let routes = valid
     .and(
         welcome_route
         .or(health_route)
+        .or(all_route)
         .or(register)
         .or(authenticate)
         .or(talks)

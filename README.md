@@ -22,6 +22,5 @@ It allows people to submit talks that they are planning on giving at upcoming me
 
 * Replace the "Next Meeting TBD" with the next meeting (js or rust)
 * Parse to meeting minutes (js)
-* /all endpoint (rust and js)
 * Frontend error handling (js)
 * Add debugging support (rust)

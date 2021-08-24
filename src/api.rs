@@ -12,11 +12,30 @@ struct IndexTemplate {
     talks: Vec<Talk>
 }
 
+#[derive(Template)]
+#[template(path = "all.j2")]
+struct AllTemplate {
+    talks: Vec<Talk>
+}
+
 // Return the talks homepage
 pub async fn welcome_handler(db: DBManager) -> Result<impl Reply, Rejection> {
     match db.list_visible_talks() {
         Ok(talks) => { 
             let template = IndexTemplate {
+                talks
+            };
+
+            Ok(html(template.render().unwrap()))
+        }
+        Err(err) => { Err(err.into()) }
+    }
+}
+
+pub async fn all_talks_handler(db: DBManager) -> Result<impl Reply, Rejection> {
+    match db.list_all_talks() {
+        Ok(talks) => { 
+            let template = AllTemplate {
                 talks
             };
 
