@@ -104,7 +104,6 @@ async fn main() {
         .or(warp::host::exact("talks.cslabs.clarkson.edu"))
         .unify().boxed()
     } else {
-        println!("debug mode on");
         warp::any().boxed()
     };
 
@@ -118,13 +117,18 @@ async fn main() {
         .or(talks)
         .or(ws_route)
         .or(static_files)
-    ).or(
-        warp::any()
-        .map(|| warp::redirect::temporary(Uri::from_static("https://talks.cosi.clarkson.edu")))
     );
 
-    println!("Serving on port {}...", port);
-    warp::serve(routes).run(([0, 0, 0, 0], port)).await;
+    if is_debug {
+        println!("Serving debug on port {}...", port);
+        warp::serve(routes).run(([0, 0, 0, 0], port)).await;    
+    } else {
+        println!("Serving on port {}...", port);
+        warp::serve(routes.or(
+            warp::any()
+            .map(move || warp::redirect::temporary(Uri::from_static("https://talks.cosi.clarkson.edu")))
+        )).run(([0, 0, 0, 0], port)).await;    
+    }
 }
 
 // This is spooky code that allows handlers to access client object 
