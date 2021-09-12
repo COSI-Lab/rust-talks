@@ -35,6 +35,19 @@ async fn main() {
         }
     };
 
+    // Get the debug status
+    let is_debug = {
+        let var = env::var_os("DEBUG");
+        match var {
+            Some(_) => {
+                true
+            }
+            None => {
+                false
+            }
+        }
+    };
+
     let pool = sqlite_pool(&database_url);
 
     // index welcome route
@@ -86,11 +99,14 @@ async fn main() {
     // Serve the routes
     let port = std::option_env!("VIRTUAL_PORT").unwrap_or("8000").parse::<u16>().unwrap();
 
-    let valid = warp::host::exact("talks.cosi.clarkson.edu")
+    let valid = if !is_debug {
+        warp::host::exact("talks.cosi.clarkson.edu")
         .or(warp::host::exact("talks.cslabs.clarkson.edu"))
-        .unify();
-
-    // let valid = warp::any();
+        .unify().boxed()
+    } else {
+        println!("debug mode on");
+        warp::any().boxed()
+    };
 
     let routes = valid
     .and(
@@ -104,7 +120,7 @@ async fn main() {
         .or(static_files)
     ).or(
         warp::any()
-        .map(|| warp::redirect(Uri::from_static("https://talks.cosi.clarkson.edu")))
+        .map(|| warp::redirect::temporary(Uri::from_static("https://talks.cosi.clarkson.edu")))
     );
 
     println!("Serving on port {}...", port);
